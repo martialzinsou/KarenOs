@@ -32,7 +32,10 @@ struct ContentView: View {
     @EnvironmentObject private var agents: AgentStore
     @EnvironmentObject private var runner: AgentRunner
 
-    @State private var tab: Int = 0
+    @State private var tab: Int = {
+        let raw = Int(ProcessInfo.processInfo.environment["KARENOS_TAB"] ?? "")
+        return raw ?? 0
+    }()
 
     var body: some View {
         TabView(selection: $tab) {

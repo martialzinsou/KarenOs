@@ -44,6 +44,13 @@ struct LibraryView: View {
                 }
             }
         }
+        .onAppear {
+            if ProcessInfo.processInfo.environment["KARENOS_OPEN_FIRST_MODEL"] == "1",
+               selection == nil,
+               let first = store.installed.first {
+                selection = first.id
+            }
+        }
     }
 
     private func remove(_ model: LocalModel) {

@@ -50,7 +50,7 @@ Scripts/make-icon.sh         # (re)génère la belle icône Packaging/KarenOS.ic
 
 1. Ouvrir **Boutique** → choisir un modèle (les petits modèles sont en haut de liste) → **Installer**.
 2. Aller dans **Mes modèles** → cliquer sur le modèle → le chat se charge automatiquement.
-3. Écrire un message et discuter. Tout est local (512 tokens de contexte par défaut, modifiable dans le code).
+3. Écrire un message et discuter. Tout est local (contexte de 2048 tokens, réponse limitée à 512 tokens par défaut, modifiable dans le code).
 
 Au premier lancement, l'app télécharge le moteur d'inférence (~8 Mo) et l'installe dans `~/Library/Application Support/KarenOS/`.
 
