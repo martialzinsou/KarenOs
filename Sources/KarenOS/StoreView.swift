@@ -1,3 +1,6 @@
+//  KarenOS
+//  Par Martial Zinsou
+
 import SwiftUI
 
 struct StoreView: View {

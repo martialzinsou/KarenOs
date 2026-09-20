@@ -1,3 +1,6 @@
+#  KarenOS
+#  Par Martial Zinsou
+
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."

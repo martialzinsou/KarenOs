@@ -1,3 +1,6 @@
+//  KarenOS
+//  Par Martial Zinsou
+
 import Foundation
 
 enum AppError: LocalizedError {

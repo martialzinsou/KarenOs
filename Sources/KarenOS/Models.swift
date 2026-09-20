@@ -1,3 +1,6 @@
+//  KarenOS
+//  Par Martial Zinsou
+
 import Foundation
 
 struct RemoteModel: Identifiable, Hashable, Codable {

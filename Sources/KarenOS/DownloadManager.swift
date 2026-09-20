@@ -1,3 +1,6 @@
+//  KarenOS
+//  Par Martial Zinsou
+
 import Foundation
 
 final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {

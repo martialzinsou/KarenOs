@@ -1,3 +1,6 @@
+//  KarenOS
+//  Par Martial Zinsou
+
 import Foundation
 
 struct ChatMessage: Identifiable, Equatable {
