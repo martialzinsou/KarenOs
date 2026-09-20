@@ -4,6 +4,20 @@ Application native macOS pour utiliser des modèles d'IA **en local** : téléch
 
 **Auteur : Martial Zinsou**
 
+## Captures d'écran
+
+![Mes modèles — bibliothèque et chat local](screenshots/1_modelles.png)
+
+*Mes modèles : bibliothèque et chat en local.*
+
+![Boutique — téléchargement de modèles GGUF depuis Hugging Face](screenshots/2_boutique.png)
+
+*Boutique : parcours et installation de modèles GGUF depuis Hugging Face.*
+
+![Compétences — rôle, contexte et obligations de résultats](screenshots/3_competences.png)
+
+*Compétences : consignes réutilisables avec n'importe quel modèle.*
+
 ## Fonctionnalités
 
 - **Boutique** : modèles GGUF sélectionnés (Qwen 0.5B à 3B, SmolLM, Phi-3…) + recherche sur Hugging Face avec indicateur de taille, licence et contexte.
