@@ -117,6 +117,21 @@ struct SkillDetail: View {
         case delete
     }
 
+    private func section(title: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            content()
+                .font(.callout)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top, spacing: 14) {
@@ -142,15 +157,34 @@ struct SkillDetail: View {
                 Spacer()
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Consignes")
-                    .font(.headline)
-                Text(skill.systemPrompt.isEmpty ? "Aucune consigne définie." : skill.systemPrompt)
-                    .font(.callout)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
+            VStack(alignment: .leading, spacing: 10) {
+                if !skill.role.isEmpty {
+                    section(title: "Rôle") {
+                        Text(skill.role)
+                    }
+                }
+                if !skill.context.isEmpty {
+                    section(title: "Contexte") {
+                        Text(skill.context)
+                    }
+                }
+                if !skill.obligation.isEmpty {
+                    section(title: "Obligations de résultats") {
+                        Text(skill.obligation)
+                    }
+                }
+                if skill.systemPrompt.isEmpty {
+                    section(title: "Compétence") {
+                        Text("Aucune consigne définie. Modifie-la pour décrire un rôle, un contexte et des obligations de résultats.")
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    section(title: "Aperçu du prompt système") {
+                        Text(skill.systemPrompt)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
             Spacer()
@@ -202,7 +236,9 @@ struct SkillEditorSheet: View {
 
     @State private var name = ""
     @State private var icon = ""
-    @State private var instructions = ""
+    @State private var role = ""
+    @State private var context = ""
+    @State private var obligation = ""
 
     private let iconChoices = [
         "sparkles", "wand.and.stars", "character.bubble", "globe",
@@ -210,10 +246,55 @@ struct SkillEditorSheet: View {
         "brain.head.profile", "chart.line.uptrend.xyaxis", "hammer", "waveform"
     ]
 
+    private struct Template {
+        let name: String
+        let icon: String
+        let role: String
+        let context: String
+        let obligation: String
+    }
+
+    private let templates: [Template] = [
+        Template(
+            name: "Traducteur", icon: "globe",
+            role: "Traducteur professionnel FR⇄EN",
+            context: "L'utilisateur est développeur et envoie du texte technique, de la documentation ou des messages.",
+            obligation: "Répondre uniquement avec la traduction demandée, sans commentaire, en conservant la terminologie technique exacte."),
+        Template(
+            name: "Correcteur de code", icon: "hammer",
+            role: "Ingénieur logiciel senior spécialisé en revue de code",
+            context: "L'utilisateur soumet du code Swift ou d'autres langages et veut l'améliorer.",
+            obligation: "Fournir chaque correction sous forme de code complet, expliquer chaque erreur en une phrase et proposer un test."),
+        Template(
+            name: "Coach d'apprentissage", icon: "brain.head.profile",
+            role: "Tuteur patient et pédagogue",
+            context: "L'utilisateur apprend un sujet technique et pose des questions, parfois naïves.",
+            obligation: "Expliquer simplement puis avec précision, terminer chaque réponse par une question pour vérifier la compréhension."),
+        Template(
+            name: "Rédacteur structuré", icon: "pencil.and.outline",
+            role: "Rédacteur spécialisé dans les contenus clairs",
+            context: "L'utilisateur fournit un sujet et des contraintes de longueur et de ton.",
+            obligation: "Rédiger avec un titre, une introduction, des sections titrées et une conclusion ; ne jamais dépasser la longueur demandée.")
+    ]
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(mode.title)
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text(mode.title)
+                    .font(.headline)
+                Spacer()
+                if !templates.isEmpty {
+                    Menu {
+                        ForEach(templates, id: \.name) { t in
+                            Button(t.name) { apply(t) }
+                        }
+                    } label: {
+                        Label("Exemples", systemImage: "text.book.closed")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .help("Préremplir avec un modèle prêt à l'emploi")
+                }
+            }
 
             TextField("Nom (ex : Traducteur FR→EN)", text: $name)
                 .textFieldStyle(.roundedBorder)
@@ -237,17 +318,18 @@ struct SkillEditorSheet: View {
                 .help("Choisir une icône")
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Consignes — envoyées au modèle avant chaque échange")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                TextEditor(text: $instructions)
-                    .font(.callout)
-                    .scrollContentBackground(.hidden)
-                    .padding(6)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
-                    .frame(minHeight: 160)
-            }
+            fieldEditor(title: "Rôle",
+                        placeholder: "Ex : Ingénieur logiciel senior spécialisé en revue de code",
+                        text: $role,
+                        help: "La personnalité ou l'expertise que le modèle doit incarner.")
+            fieldEditor(title: "Contexte",
+                        placeholder: "Ex : l'utilisateur est développeur et soumet son code Swift pour amélioration",
+                        text: $context,
+                        help: "La situation, le public et les informations nécessaires pour bien répondre.")
+            fieldEditor(title: "Obligations de résultats",
+                        placeholder: "Ex : fournir du code complet, expliquer chaque correction et proposer un test",
+                        text: $obligation,
+                        help: "Ce que le modèle doit impérativement livrer : format, qualité, livrables attendus.")
 
             HStack {
                 Spacer()
@@ -261,26 +343,56 @@ struct SkillEditorSheet: View {
             }
         }
         .padding(20)
-        .frame(width: 460)
+        .frame(width: 560, height: 640)
         .onAppear {
             if case .edit(let skill) = mode {
                 name = skill.name
                 icon = skill.icon
-                instructions = skill.instructions
+                role = skill.role
+                context = skill.context
+                obligation = skill.obligation
             }
         }
+    }
+
+    private func fieldEditor(title: String, placeholder: String, text: Binding<String>, help: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextEditor(text: text)
+                .font(.callout)
+                .scrollContentBackground(.hidden)
+                .padding(6)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
+                .frame(minHeight: 52)
+                .frame(maxHeight: 84)
+            Text(help)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private func apply(_ t: Template) {
+        if name.isEmpty { name = t.name }
+        if icon.isEmpty { icon = t.icon }
+        role = t.role
+        context = t.context
+        obligation = t.obligation
     }
 
     private func save() {
         switch mode {
         case .create:
             onSave(Skill(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                         icon: icon, instructions: instructions))
+                         icon: icon, role: role, context: context, obligation: obligation))
         case .edit(let skill):
             var updated = skill
             updated.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
             updated.icon = icon
-            updated.instructions = instructions
+            updated.role = role
+            updated.context = context
+            updated.obligation = obligation
             onSave(updated)
         }
         dismiss()

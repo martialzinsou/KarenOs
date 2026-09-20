@@ -5,24 +5,70 @@ struct Skill: Identifiable, Codable, Hashable {
     var id: UUID
     var name: String
     var icon: String
-    var instructions: String
+    var role: String
+    var context: String
+    var obligation: String
     var createdAt: Date
 
-    init(id: UUID = UUID(), name: String, icon: String = "sparkles", instructions: String) {
+    init(id: UUID = UUID(), name: String, icon: String = "sparkles",
+         role: String = "", context: String = "", obligation: String = "") {
         self.id = id
         self.name = name
         self.icon = icon
-        self.instructions = instructions
+        self.role = role
+        self.context = context
+        self.obligation = obligation
         self.createdAt = Date()
     }
 
-    var systemPrompt: String {
-        instructions.trimmingCharacters(in: .whitespacesAndNewlines)
+    enum CodingKeys: String, CodingKey {
+        case id, name, icon, role, context, obligation, createdAt
+        case instructions
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        icon = try c.decodeIfPresent(String.self, forKey: .icon) ?? "sparkles"
+        role = try c.decodeIfPresent(String.self, forKey: .role) ?? ""
+        context = try c.decodeIfPresent(String.self, forKey: .context) ?? ""
+        obligation = try c.decodeIfPresent(String.self, forKey: .obligation) ?? ""
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        if let legacy = try c.decodeIfPresent(String.self, forKey: .instructions),
+           !legacy.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           role.isEmpty, context.isEmpty, obligation.isEmpty {
+            context = legacy
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(icon, forKey: .icon)
+        try c.encode(role, forKey: .role)
+        try c.encode(context, forKey: .context)
+        try c.encode(obligation, forKey: .obligation)
+        try c.encode(createdAt, forKey: .createdAt)
     }
 
     var iconSymbol: String {
         let trimmed = icon.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "sparkles" : trimmed
+    }
+
+    var isComplete: Bool { !role.isEmpty && !context.isEmpty && !obligation.isEmpty }
+
+    var systemPrompt: String {
+        var sections: [String] = []
+        let cleanRole = role.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanContext = context.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanObligation = obligation.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanRole.isEmpty { sections.append("Rôle : \(cleanRole)") }
+        if !cleanContext.isEmpty { sections.append("Contexte : \(cleanContext)") }
+        if !cleanObligation.isEmpty { sections.append("Obligations de résultats : \(cleanObligation)") }
+        return sections.joined(separator: "\n\n")
     }
 }
 
