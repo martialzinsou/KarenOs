@@ -9,6 +9,8 @@ struct KarenOSApp: App {
     @StateObject private var store = ModelStore()
     @StateObject private var engine = EngineManager()
     @StateObject private var skills = SkillStore()
+    @StateObject private var agents = AgentStore()
+    @StateObject private var runner = AgentRunner()
 
     var body: some Scene {
         WindowGroup {
@@ -16,7 +18,9 @@ struct KarenOSApp: App {
                 .environmentObject(store)
                 .environmentObject(engine)
                 .environmentObject(skills)
-                .frame(minWidth: 920, minHeight: 620)
+                .environmentObject(agents)
+                .environmentObject(runner)
+                .frame(minWidth: 980, minHeight: 640)
         }
         .windowResizability(.contentMinSize)
     }
@@ -25,17 +29,28 @@ struct KarenOSApp: App {
 struct ContentView: View {
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
+    @EnvironmentObject private var agents: AgentStore
+    @EnvironmentObject private var runner: AgentRunner
+
+    @State private var tab: Int = 0
 
     var body: some View {
-        TabView {
+        TabView(selection: $tab) {
             LibraryView()
                 .tabItem { Label("Mes modèles", systemImage: "brain.head.profile") }
+                .tag(0)
 
             StoreView()
                 .tabItem { Label("Boutique", systemImage: "storefront") }
+                .tag(1)
+
+            AgentsView()
+                .tabItem { Label("Agents", systemImage: "person.3") }
+                .tag(2)
 
             SkillsView()
                 .tabItem { Label("Compétences", systemImage: "wand.and.stars") }
+                .tag(3)
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -44,8 +59,10 @@ struct ContentView: View {
         }
         .task {
             async let _ = engine.ensureEngine()
+            runner.startAutoAgents(agentStore: agents, engine: engine, models: store)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            runner.stop()
             engine.stop()
         }
     }

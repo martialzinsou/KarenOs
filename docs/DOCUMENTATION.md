@@ -12,18 +12,20 @@ KarenOS est une application native macOS qui permet de **télécharger des modè
 2. [Architecture générale](#2-architecture-générale)
 3. [Le parcours d'un message (inférence)](#3-le-parcours-dun-message-inférence)
 4. [Téléchargement et gestion des modèles](#4-téléchargement-et-gestion-des-modèles)
-5. [Les compétences](#5-les-compétences)
-6. [Persistance et stockage](#6-persistance-et-stockage)
-7. [Organisation du code](#7-organisation-du-code)
-8. [Construction et lancement](#8-construction-et-lancement)
-9. [Dépannage](#9-dépannage)
-10. [Limites et évolutions](#10-limites-et-évolutions)
+5. [Les agents autonomes](#5-les-agents-autonomes)
+6. [Le multimodal (images, vidéos, audio, voix)](#6-le-multimodal-images-vidéos-audio-voix)
+7. [Les compétences](#7-les-compétences)
+8. [Persistance et stockage](#8-persistance-et-stockage)
+9. [Organisation du code](#9-organisation-du-code)
+10. [Construction et lancement](#10-construction-et-lancement)
+11. [Dépannage](#11-dépannage)
+12. [Limites et évolutions](#12-limites-et-évolutions)
 
 ---
 
 ## 1. Vue d'ensemble
 
-L'application se compose de **trois volets**, accessibles via la barre d'onglets.
+L'application se compose de **quatre volets**, accessibles via la barre d'onglets.
 
 ### Mes modèles
 
@@ -42,6 +44,12 @@ Parcours de modèles GGUF **sélectionnés** (Qwen 0,5 → 3 B, SmolLM2, Phi-3) 
 Des **consignes réutilisables** — rôle, contexte, obligations de résultats — injectées automatiquement dans n'importe quel modèle.
 
 ![Compétences — rôle, contexte et obligations de résultats](../screenshots/3_competences.png)
+
+### Agents
+
+Des **missions autonomes** : on décrit la mission, on choisit le modèle, le **déclencheur** (manuel, au lancement, toutes les X secondes), une **boucle infinie** et des **conditions de fin**. L'app charge automatiquement le modèle choisi, exécute la mission en boucle, puis restaure le modèle précédent.
+
+![Agents — missions autonomes, déclencheur, boucle et conditions de fin](../screenshots/4_agents.png)
 
 ---
 
@@ -220,7 +228,113 @@ L'ordinateur ne stocke **que** le fichier `.gguf` et cette fiche : rien d'autre 
 
 ---
 
-## 5. Les compétences
+## 5. Les agents autonomes
+
+### 5.1 Principe
+
+Un **agent** est une mission autonome : on lui donne une **mission**, un **modèle**, un **déclencheur**, une **boucle** et des **conditions de fin**. Il exécute seul, en continu, sans intervention.
+
+| Réglage | Explication |
+|---|---|
+| **Mission** | Le prompt système donné à l'agent (objectif, méthode, livrables). |
+| **Modèle** | Le modèle à utiliser pour la mission — il est **chargé automatiquement**, même si un autre modèle était actif. |
+| **Déclencheur** | **Manuel** (bouton « Lancer »), **au lancement de l'app**, ou **toutes les X secondes**. |
+| **Boucle** | « Unique » = une seule exécution ; « Infinie » = l'agent se relance en continu avec son propre résultat précédent comme contexte. |
+| **Conditions de fin** | Arrêt après **N itérations**, après une **durée maximale**, ou quand la réponse contient un **mot-clé de réussite** (ex. `TERMINÉ`). |
+
+### 5.2 Flux d'exécution
+
+```mermaid
+flowchart LR
+    A["Onglet Agents"] -->|"créer / éditer"| B["Agent (mission, modèle, icône)"]
+    B --> C["Déclencheur manuel · au lancement · intervalle"]
+    B --> D["Boucle infinie · conditions de fin"]
+    C --> E["Lancer la mission"]
+    D --> E
+    E --> F["Chargement du modèle de l'agent"]
+    F --> G["Itération : mission + résultat précédent"]
+    G --> H{"Condition de fin ?"}
+    H -->|"non + boucle"| G
+    H -->|"oui"| I["Journal terminé"]
+    H -->|"boucle désactivée"| I
+    I --> J["Restauration du modèle précédent"]
+```
+
+Détail d'une itération :
+
+1. **Chargement du modèle** de l'agent (si différent du modèle actif).
+2. **Appel** `POST /v1/chat/completions` avec la mission en prompt système.
+3. Si l'agent boucle, le **résultat précédent** est réinjecté : « Poursuis ta mission. Ton dernier résultat : … ».
+4. Le résultat est ajouté au **journal d'exécution** (itération, horodatage, texte).
+5. **Vérification des conditions de fin** → arrêt ou itération suivante.
+6. À la fin : **restauration du modèle précédent** (ou arrêt du moteur si aucun modèle n'était actif).
+
+### 5.3 Registre des agents
+
+`~/Library/Application Support/KarenOS/agents.json` :
+
+```json
+{
+  "agents": [
+    {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "name": "Correcteur de code",
+      "icon": "hammer",
+      "mission": "Rôle : Ingénieur logiciel senior spécialisé en revue de code…",
+      "modelID": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+      "trigger": {"kind": "manual"},
+      "loopForever": false,
+      "endConditions": [{"kind": "maxIterations", "value": 3}],
+      "createdAt": 811610000.5
+    }
+  ]
+}
+```
+
+| Champ | Rôle |
+|---|---|
+| `trigger.kind` | `manual`, `onLaunch` ou `interval` (avec `seconds`). |
+| `loopForever` | `true` → boucle infinie. |
+| `endConditions` | Tableau : `maxIterations`, `maxDuration` (minutes), `successKeyword`. |
+
+### 5.4 Un seul agent à la fois
+
+Le moteur charge un modèle unique : une seule mission peut tourner à la fois. Les boutons **Pause / Reprendre / Arrêter** et le **journal d'exécution** sont visibles dans la fiche de l'agent en cours. Au lancement de l'app, les agents « déclencheur au lancement » démarrent automatiquement.
+
+---
+
+## 6. Le multimodal (images, vidéos, audio, voix)
+
+### 6.1 Ce que l'on peut envoyer
+
+La barre de saisie du chat propose désormais trois entrées :
+
+1. **Trombone** — joindre des fichiers au message : **images**, **vidéos**, **audios**, ou tout autre fichier.
+2. **Micro** — **dicter son message à l'application** par la voix (reconnaissance vocale locale).
+3. **Champ texte** — saisie classique.
+
+Les pièces jointes s'affichent sous forme de vignettes avant l'envoi, puis dans la bulle du message. Un clic droit permet de révéler le fichier dans le Finder.
+
+### 6.2 Reconnaissance vocale
+
+- La dictée utilise le framework **Speech** de macOS (**`SFSpeechRecognizer`**, sur l'appareil quand le modèle vocal est disponible : `requiresOnDeviceRecognition = true`).
+- Au premier usage, macOS demande les permissions **Microphone** et **Reconnaissance vocale** (décrites dans `Info.plist`).
+- Le texte reconnu est **inséré dans la zone de saisie** et peut être modifié avant l'envoi.
+
+### 6.3 Vision : quand le modèle voit vraiment l'image
+
+Un modèle de chat ne comprend une image que s'il est **vision** (ex. Llava / Qwen-VL) et accompagné d'un fichier **`*.mmproj`** stocké à côté du `*.gguf`.
+
+- À chaque chargement, l'app **détecte automatiquement** la présence d'un `.mmproj` (`EngineManager.hasVision`).
+- Si présent, les images jointes sont envoyées dans le format OpenAI vision :
+  `{"type":"image_url","image_url":{"url":"data:image/png;base64,…"}}`.
+- Sans `.mmproj`, **l'image reste une pièce jointe** (affichée dans la conversation) et le texte seul part vers le modèle.
+
+> Sur les modèles textuels fournis par défaut (Qwen, SmolLM, Phi), la vision n'est donc pas active — le modèle « voit » la référence de la pièce jointe mais pas son contenu.
+
+---
+
+## 7. Les compétences
 
 ### 5.1 Principe
 
@@ -234,7 +348,7 @@ Une **compétence** est un set de consignes **structuré en trois champs** :
 
 Elle est **sauvegardée sur le disque** (`skills.json`) et **indépendante du modèle** : la même compétence fonctionne avec Qwen, SmolLM ou Phi-3.
 
-### 5.2 Flux de bout en bout
+### 7.2 Flux de bout en bout
 
 ```mermaid
 flowchart LR
@@ -253,7 +367,7 @@ flowchart LR
     K --> L["n'importe quel modèle chargé"]
 ```
 
-### 5.3 Exemple concret
+### 7.3 Exemple concret
 
 Compétence « Correcteur de code » :
 
@@ -268,7 +382,7 @@ Chaque fois qu'une conversation démarre avec cette compétence **active**, ce b
 
 ---
 
-## 6. Persistance et stockage
+## 8. Persistance et stockage
 
 Tout est situé dans le dossier de support de l'application :
 
@@ -289,7 +403,7 @@ Les noms de fichiers GGUF occupent plusieurs centaines de Mo à quelques Go ; le
 
 ---
 
-## 7. Organisation du code
+## 9. Organisation du code
 
 ```
 Sources/KarenOS/
@@ -312,7 +426,7 @@ Sources/KarenOS/
 
 ---
 
-## 8. Construction et lancement
+## 10. Construction et lancement
 
 Pré-requis : **macOS 13+** et les outils de ligne de commande (`xcode-select --install`) — **pas besoin d'Xcode**.
 
@@ -326,7 +440,7 @@ Au premier lancement, l'app télécharge le moteur `llama-server` (~8 Mo) depuis
 
 ---
 
-## 9. Dépannage
+## 11. Dépannage
 
 | Symptôme | Cause probable | Correctif |
 |---|---|---|
@@ -338,7 +452,7 @@ Au premier lancement, l'app télécharge le moteur `llama-server` (~8 Mo) depuis
 
 ---
 
-## 10. Limites et évolutions
+## 12. Limites et évolutions
 
 - **Contexte court** : fenêtre fixée à `2048` tokens (`-c 2048`), réponse limitée à `512` tokens.
 - **Un modèle actif à la fois** : le moteur ne charge qu'un modèle par session de chat.

@@ -27,6 +27,10 @@
 	<string>13.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>KarenOS utilise le micro pour écouter et transcrire votre voix lorsque vous dictez un message (tout est traité localement).</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>KarenOS utilise la reconnaissance vocale du système pour transformer votre message parlé en texte dans le chat.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

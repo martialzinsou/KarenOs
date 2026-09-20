@@ -7,9 +7,12 @@ struct ChatMessage: Identifiable, Equatable {
     let id = UUID()
     let role: String
     var content: String
+    var attachments: [ChatAttachment] = []
 
     static func system(_ text: String) -> ChatMessage { ChatMessage(role: "system", content: text) }
-    static func user(_ text: String) -> ChatMessage { ChatMessage(role: "user", content: text) }
+    static func user(_ text: String, files: [ChatAttachment] = []) -> ChatMessage {
+        ChatMessage(role: "user", content: text, attachments: files)
+    }
     static func assistant(_ text: String = "") -> ChatMessage { ChatMessage(role: "assistant", content: text) }
 }
 
@@ -28,7 +31,7 @@ enum ChatService {
         var task: Task<Void, Never>?
     }
 
-    static func streamReply(_ history: [ChatMessage], baseURL: URL) -> AsyncThrowingStream<String, Error> {
+    static func streamReply(_ history: [ChatMessage], baseURL: URL, vision: Bool = false) -> AsyncThrowingStream<String, Error> {
         let box = TaskBox()
         return AsyncThrowingStream { continuation in
             box.task = Task {
@@ -39,7 +42,7 @@ enum ChatService {
                     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     let payload: [String: Any] = [
                         "model": "local",
-                        "messages": history.map { ["role": $0.role, "content": $0.content] },
+                        "messages": history.map { ["role": $0.role, "content": Self.apiContent(for: $0, vision: vision)] },
                         "stream": true,
                         "max_tokens": 512,
                         "temperature": 0.7
@@ -69,5 +72,26 @@ enum ChatService {
             }
             continuation.onTermination = { _ in box.task?.cancel() }
         }
+    }
+
+    private static func apiContent(for message: ChatMessage, vision: Bool) -> Any {
+        let images = vision ? message.attachments.filter { $0.kind == .image } : []
+        guard !images.isEmpty else { return message.content }
+
+        var parts: [[String: Any]] = []
+        if !message.content.isEmpty {
+            parts.append(["type": "text", "text": message.content])
+        }
+        for image in images {
+            if let data = try? Data(contentsOf: image.fileURL) {
+                parts.append([
+                    "type": "image_url",
+                    "image_url": ["url": "data:\(image.mimeType);base64,\(data.base64EncodedString())"]
+                ])
+            } else {
+                parts.append(["type": "text", "text": "[Image illisible : \(image.fileName)]"])
+            }
+        }
+        return parts
     }
 }

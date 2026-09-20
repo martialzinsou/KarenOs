@@ -21,6 +21,8 @@ struct ChatView: View {
     @State private var isGenerating = false
     @State private var phase: Phase = .loading
     @State private var modelMissing = false
+    @State private var pendingFiles: [ChatAttachment] = []
+    @StateObject private var speech = SpeechInputController()
 
     private let emptyID = UUID()
 
@@ -53,6 +55,11 @@ struct ChatView: View {
         }
         .onAppear { modelMissing = !model.existsOnDisk }
         .task { await start() }
+        .onAppear {
+            speech.onFinalText = { text in
+                self.input.append(contentsOf: (self.input.isEmpty ? "" : " ") + text)
+            }
+        }
     }
 
     // MARK: - Sections
@@ -212,26 +219,95 @@ struct ChatView: View {
     }
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("Écris ton message…", text: $input, axis: .vertical)
-                .textFieldStyle(.plain)
-                .padding(10)
-                .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary))
-                .lineLimit(1...6)
-                .onSubmit { submit() }
-
-            Button(action: submit) {
-                Image(systemName: isGenerating ? "stop.circle.fill" : "arrow.up.circle.fill")
-                    .font(.system(size: 28))
+        VStack(spacing: 8) {
+            if !pendingFiles.isEmpty {
+                pendingFilesRow
             }
-            .buttonStyle(.plain)
-            .disabled(!canSend)
+            if speech.isListening {
+                liveDictationRow
+            }
+            HStack(spacing: 10) {
+                attachMenu
+                micButton
+                TextField("Écris ton message…", text: $input, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary))
+                    .lineLimit(1...6)
+                    .onSubmit { submit() }
+
+                Button(action: submit) {
+                    Image(systemName: isGenerating ? "stop.circle.fill" : "arrow.up.circle.fill")
+                        .font(.system(size: 28))
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSend)
+            }
         }
         .padding(12)
     }
 
+    private var attachMenu: some View {
+        Menu {
+            Button { addFiles(.image) } label: { Label("Image…", systemImage: "photo") }
+            Button { addFiles(.video) } label: { Label("Vidéo…", systemImage: "film") }
+            Button { addFiles(.audio) } label: { Label("Audio…", systemImage: "waveform") }
+            Button { addFiles(.file) } label: { Label("Fichier…", systemImage: "doc") }
+        } label: {
+            Image(systemName: "paperclip")
+                .padding(4)
+        }
+        .menuStyle(.borderlessButton)
+        .disabled(isGenerating)
+        .help("Joindre des fichiers : image, vidéo, audio ou tout autre fichier.")
+    }
+
+    private var micButton: some View {
+        Button(action: toggleSpeech) {
+            Image(systemName: speech.isListening ? "mic.fill" : "mic")
+                .foregroundStyle(speech.isListening ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                .padding(4)
+        }
+        .buttonStyle(.plain)
+        .disabled(isGenerating)
+        .help("Dicter ton message à l'application (reconnaissance vocale locale).")
+    }
+
+    private var pendingFilesRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(pendingFiles) { file in
+                    AttachmentChip(file: file) {
+                        pendingFiles.removeAll { $0.id == file.id }
+                    }
+                }
+            }
+        }
+    }
+
+    private var liveDictationRow: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(.red)
+                .frame(width: 8, height: 8)
+            Text(speech.liveText.isEmpty ? "À l'écoute… parle pour dicter ton message." : speech.liveText)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+            Spacer()
+            Button {
+                speech.stop()
+            } label: {
+                Image(systemName: "stop.fill")
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 4)
+    }
+
     private var canSend: Bool {
-        phase == .loaded && !isGenerating && !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        phase == .loaded && !isGenerating
+            && (!input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !pendingFiles.isEmpty)
     }
 
     // MARK: - Actions
@@ -244,17 +320,33 @@ struct ChatView: View {
     }
 
     private func submit() {
-        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else {
-            if isGenerating { cancelGeneration() }
+        if isGenerating {
+            cancelGeneration()
             return
         }
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty || !pendingFiles.isEmpty else { return }
+        let files = pendingFiles
         input = ""
-        messages.append(.user(text))
+        pendingFiles = []
+        messages.append(.user(text, files: files))
         let assistant = ChatMessage.assistant()
         messages.append(assistant)
         isGenerating = true
         Task { await generate(into: assistant) }
+    }
+
+    private func addFiles(_ kind: ChatAttachment.Kind) {
+        let urls = AttachmentPanel.pick(kind: kind)
+        pendingFiles.append(contentsOf: urls.map(ChatAttachment.init(url:)))
+    }
+
+    private func toggleSpeech() {
+        if speech.isListening {
+            speech.stop()
+        } else {
+            speech.start()
+        }
     }
 
     private func generate(into assistant: ChatMessage) async {
@@ -269,7 +361,7 @@ struct ChatView: View {
         }
         var accumulated = ""
         do {
-            for try await piece in ChatService.streamReply(history, baseURL: baseURL) {
+            for try await piece in ChatService.streamReply(history, baseURL: baseURL, vision: engine.hasVision) {
                 accumulated += piece
                 if let idx = messages.firstIndex(where: { $0.id == assistant.id }) {
                     messages[idx].content = accumulated
@@ -296,7 +388,14 @@ private struct MessageBubble: View {
     var body: some View {
         HStack {
             if isUser { Spacer(minLength: 60) }
-            VStack(alignment: isUser ? .trailing : .leading, spacing: 3) {
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
+                if !message.attachments.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(message.attachments) { file in
+                            AttachmentThumb(file: file)
+                        }
+                    }
+                }
                 Text(message.content.isEmpty ? "…" : message.content)
                     .textSelection(.enabled)
                     .padding(.horizontal, 12)
@@ -310,6 +409,80 @@ private struct MessageBubble: View {
             if !isUser { Spacer(minLength: 60) }
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+    }
+}
+
+private struct AttachmentThumb: View {
+    let file: ChatAttachment
+
+    var body: some View {
+        Group {
+            if file.kind == .image, let image = NSImage(contentsOf: file.fileURL) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: 240, maxHeight: 180)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                VStack(spacing: 4) {
+                    Image(systemName: iconName)
+                        .font(.system(size: 22))
+                    Text(file.fileName)
+                        .font(.caption2)
+                        .lineLimit(1)
+                }
+                .padding(8)
+                .frame(width: 110)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
+            }
+        }
+        .contextMenu {
+            Button("Révéler dans le Finder") {
+                NSWorkspace.shared.activateFileViewerSelecting([file.fileURL])
+            }
+        }
+    }
+
+    private var iconName: String {
+        switch file.kind {
+        case .image: return "photo"
+        case .video: return "film"
+        case .audio: return "waveform"
+        case .file: return "doc"
+        }
+    }
+}
+
+private struct AttachmentChip: View {
+    let file: ChatAttachment
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: iconName)
+                .font(.caption)
+            Text(file.fileName)
+                .font(.caption)
+                .lineLimit(1)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(Color(nsColor: .controlBackgroundColor)))
+    }
+
+    private var iconName: String {
+        switch file.kind {
+        case .image: return "photo"
+        case .video: return "film"
+        case .audio: return "waveform"
+        case .file: return "doc"
+        }
     }
 }
 

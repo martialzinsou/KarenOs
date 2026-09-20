@@ -18,10 +18,16 @@ Application native macOS pour utiliser des modèles d'IA **en local** : téléch
 
 *Compétences : consignes réutilisables avec n'importe quel modèle.*
 
+![Agents — missions autonomes, déclencheur, boucle et conditions de fin](screenshots/4_agents.png)
+
+*Agents : missions autonomes sur un modèle choisi, avec déclencheur, boucle infinie et conditions de fin.*
+
 ## Fonctionnalités
 
 - **Boutique** : modèles GGUF sélectionnés (Qwen 0.5B à 3B, SmolLM, Phi-3…) + recherche sur Hugging Face avec indicateur de taille, licence et contexte.
 - **Mes modèles** : modèles installés, chargement, discussion en streaming (réponses token par token).
+- **Agents** : missions autonomes — décrivez la mission, choisissez le modèle, le **déclencheur** (manuel, au lancement, toutes les X secondes), la **boucle infinie** et des **conditions de fin** (nombre d'itérations, durée, mot-clé de réussite). Le modèle est chargé automatiquement puis le précédent est restauré.
+- **Multimodal** : joignez des **images, vidéos, fichiers audio** à vos messages et **dictez votre voix** (reconnaissance vocale locale). En présence d'un modèle vision (`*.mmproj`), les images sont réellement analysées par le modèle.
 - **Compétences** : consignes structurées (rôle, contexte, obligations de résultats) appliquées automatiquement quel que soit le modèle.
 - **Moteur local** : utilise `llama-server` (llama.cpp) téléchargé automatiquement et embarqué dans l'app. Aucune donnée ne quitte l'ordinateur.
 

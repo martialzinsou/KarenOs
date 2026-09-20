@@ -13,6 +13,7 @@ enum AppPaths {
     static let engineDir: URL = support.appendingPathComponent("Engine", isDirectory: true)
     static let registryURL: URL = support.appendingPathComponent("models.json")
     static let skillsURL: URL = support.appendingPathComponent("skills.json")
+    static let agentsURL: URL = support.appendingPathComponent("agents.json")
     static let serverLogURL: URL = support.appendingPathComponent("server.log")
 
     static func ensure() {

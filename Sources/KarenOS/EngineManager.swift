@@ -17,6 +17,7 @@ final class EngineManager: ObservableObject {
 
     @Published var state: State = .idle
     @Published private(set) var port: Int = 0
+    @Published private(set) var hasVision = false
 
     private var process: Process?
 
@@ -45,6 +46,11 @@ final class EngineManager: ObservableObject {
 
     var isEngineInstalled: Bool {
         FileManager.default.fileExists(atPath: engineExe.path)
+    }
+
+    var activeModelID: String? {
+        if case .running(let id) = state { return id }
+        return nil
     }
 
     static var machineArch: String {
@@ -154,7 +160,13 @@ final class EngineManager: ObservableObject {
         if proc.isRunning {
             state = loaded ? .running(model.id) : .failed("Le modèle n'a pas répondu au chargement.")
         }
+        hasVision = loaded && isVisionCapable(directory: model.directory)
         return loaded
+    }
+
+    private func isVisionCapable(directory: URL) -> Bool {
+        guard let files = try? FileManager.default.contentsOfDirectory(atPath: directory.path) else { return false }
+        return files.contains { $0.lowercased().hasSuffix(".mmproj") }
     }
 
     private func engineExeExists() -> URL? {
@@ -183,6 +195,7 @@ final class EngineManager: ObservableObject {
     func stop() {
         stopProcess()
         state = .ready
+        hasVision = false
     }
 
     private func stopProcess() {

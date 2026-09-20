@@ -99,10 +99,3 @@ private struct ContentUnavailablePlaceholder: View {
         .padding()
     }
 }
-
-extension EngineManager {
-    var activeModelID: String? {
-        if case .running(let id) = state { return id }
-        return nil
-    }
-}
