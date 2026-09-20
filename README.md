@@ -22,7 +22,10 @@ Application native macOS pour utiliser des modèles d'IA **en local** : téléch
 
 - **Boutique** : modèles GGUF sélectionnés (Qwen 0.5B à 3B, SmolLM, Phi-3…) + recherche sur Hugging Face avec indicateur de taille, licence et contexte.
 - **Mes modèles** : modèles installés, chargement, discussion en streaming (réponses token par token).
+- **Compétences** : consignes structurées (rôle, contexte, obligations de résultats) appliquées automatiquement quel que soit le modèle.
 - **Moteur local** : utilise `llama-server` (llama.cpp) téléchargé automatiquement et embarqué dans l'app. Aucune donnée ne quitte l'ordinateur.
+
+📘 **Documentation complète** — architecture, schémas d'inférence, flux des compétences, dépannage : [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) →
 
 ## Pré-requis
 
