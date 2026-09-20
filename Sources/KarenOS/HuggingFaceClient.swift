@@ -49,8 +49,9 @@ enum HuggingFaceClient {
     static let curatedIDs: [String] = [
         "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
         "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+        "Qwen/Qwen2.5-3B-Instruct-GGUF",
         "HuggingFaceTB/SmolLM2-360M-Instruct-GGUF",
-        "google/gemma-2b-it-GGUF",
+        "HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF",
         "microsoft/Phi-3-mini-4k-instruct-gguf"
     ]
 }

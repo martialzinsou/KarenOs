@@ -6,6 +6,7 @@ final class ModelStore: ObservableObject {
     @Published var installed: [LocalModel] = []
     @Published var downloading: [String: Double] = [:]
     @Published var activeInstalls: Set<String> = []
+    @Published var downloadError: [String: String] = [:]
 
     init() {
         AppPaths.ensure()
@@ -25,6 +26,10 @@ final class ModelStore: ObservableObject {
         guard !activeInstalls.contains(key) else { return }
         guard let url = remote.downloadURL(for: file) else { return }
 
+        if installed.contains(where: { $0.id == remote.id && $0.fileName == file.rfilename }) {
+            return
+        }
+
         let model = LocalModel(
             id: remote.id,
             displayName: remote.displayName,
@@ -37,6 +42,7 @@ final class ModelStore: ObservableObject {
 
         activeInstalls.insert(key)
         downloading[key] = 0
+        downloadError[key] = nil
         try? FileManager.default.createDirectory(at: model.directory, withIntermediateDirectories: true)
 
         do {
@@ -48,6 +54,7 @@ final class ModelStore: ObservableObject {
             installed.append(model)
             save()
         } catch {
+            downloadError[key] = error.localizedDescription
             #if DEBUG
             print("Échec téléchargement \(key) : \(error)")
             #endif
@@ -66,7 +73,15 @@ final class ModelStore: ObservableObject {
 
     private func load() {
         guard let data = try? Data(contentsOf: AppPaths.registryURL) else { return }
-        installed = (try? JSONDecoder().decode([LocalModel].self, from: data)) ?? []
+        let decoded = (try? JSONDecoder().decode([LocalModel].self, from: data)) ?? []
+        var seen = Set<String>()
+        let deduped = decoded.filter { entry in
+            let key = entry.id + "|" + entry.fileName
+            guard !seen.contains(key) else { return false }
+            seen.insert(key)
+            return true
+        }
+        installed = deduped
     }
 
     private func save() {

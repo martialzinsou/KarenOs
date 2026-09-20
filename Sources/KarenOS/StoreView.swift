@@ -106,6 +106,9 @@ struct StoreView: View {
     // MARK: - Actions
 
     private func searchChanged() async {
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        if Task.isCancelled { return }
+
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             results = []
@@ -116,7 +119,9 @@ struct StoreView: View {
         isSearching = true
         activeSearch = trimmed
         do {
-            results = try await HuggingFaceClient.search(trimmed)
+            let found = try await HuggingFaceClient.search(trimmed, limit: 12)
+            let enriched = await enrich(found)
+            results = enriched.filter { !($0.gated?.isGated ?? false) && !$0.ggufSiblings.isEmpty }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -124,20 +129,29 @@ struct StoreView: View {
         isSearching = false
     }
 
-    private func loadCurated() async {
-        guard !curatedLoaded else { return }
+    private func enrich(_ list: [RemoteModel]) async -> [RemoteModel] {
         await withTaskGroup(of: RemoteModel?.self) { group in
-            for id in HuggingFaceClient.curatedIDs {
+            for model in list {
                 group.addTask {
-                    try? await HuggingFaceClient.detail(id: id)
+                    try? await HuggingFaceClient.detail(id: model.id)
                 }
             }
+            var enriched: [RemoteModel] = []
             for await result in group {
                 if let model = result {
-                    curated.append(model)
+                    enriched.append(model)
                 }
             }
+            return enriched
         }
+    }
+
+    private func loadCurated() async {
+        guard !curatedLoaded else { return }
+        let fetched = await enrich(HuggingFaceClient.curatedIDs.map { id in
+            RemoteModel(id: id, downloads: 0, likes: nil, gated: nil, cardData: nil, gguf: nil, siblings: nil)
+        })
+        curated = fetched.filter { !($0.gated?.isGated ?? false) }
         curated.sort { ($0.downloads ?? 0) > ($1.downloads ?? 0) }
         curatedLoaded = true
     }
@@ -166,10 +180,17 @@ struct StoreCard: View {
     @EnvironmentObject private var engine: EngineManager
     let model: RemoteModel
 
+    @State private var resolving = false
+    @State private var live: RemoteModel?
+
+    private var displayed: RemoteModel { live ?? model }
     private var installed: Bool { store.isInstalled(id: model.id) }
     private var isDownloading: Bool { store.activeInstalls.contains(model.id) }
     private var progress: Double { store.downloading[model.id] ?? 0 }
-    private var defaultSize: Int64? { model.defaultFile?.size }
+    private var defaultSize: Int64? { displayed.defaultFile?.size }
+    private var canInstall: Bool {
+        displayed.defaultFile != nil || !displayed.ggufSiblings.isEmpty
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -178,24 +199,24 @@ struct StoreCard: View {
                     .font(.title2)
                     .foregroundStyle(.indigo)
                 Spacer()
-                Text(model.prettyContext.isEmpty ? "" : "\(model.prettyContext) ctx")
+                Text(displayed.prettyContext.isEmpty ? "" : "\(displayed.prettyContext) ctx")
                     .font(.caption)
                     .padding(4)
                     .background(Capsule().fill(.quaternary))
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(model.displayName)
+                Text(displayed.displayName)
                     .font(.headline)
                     .lineLimit(1)
-                Text("par \(model.author)")
+                Text("par \(displayed.author)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             HStack(spacing: 8) {
-                if model.downloads != nil {
-                    Label("\(model.downloadCountText)", systemImage: "arrow.down.circle")
+                if displayed.downloads != nil {
+                    Label("\(displayed.downloadCountText)", systemImage: "arrow.down.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -223,6 +244,15 @@ struct StoreCard: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
+            } else if resolving {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Résolution…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
             } else {
                 Button {
                     installDefault()
@@ -232,19 +262,47 @@ struct StoreCard: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .disabled(model.defaultFile == nil || engine.isInstallingEngine)
+                .disabled(!canInstall || engine.isInstallingEngine)
+            }
+
+            if let error = store.downloadError[model.id] {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color(nsColor: .controlBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.06)))
+        .task { await resolveIfNeeded() }
     }
 
     private func installDefault() {
-        guard let file = model.defaultFile else { return }
-        Task {
-            await store.download(model, file: file)
+        if let file = displayed.defaultFile ?? displayed.ggufSiblings.first {
+            Task {
+                await store.download(model, file: file)
+            }
+        } else {
+            resolving = true
+            Task {
+                await resolveIfNeeded(force: true)
+                resolving = false
+            }
+        }
+    }
+
+    private func resolveIfNeeded(force: Bool = false) async {
+        guard force || displayed.ggufSiblings.isEmpty else { return }
+        guard live == nil else { return }
+        do {
+            let detail = try await HuggingFaceClient.detail(id: model.id)
+            if detail.gated?.isGated != true {
+                await MainActor.run { live = detail }
+            }
+        } catch {
+            await MainActor.run { }
         }
     }
 }

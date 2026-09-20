@@ -8,7 +8,9 @@ struct StoreDetailSheet: View {
 
     @State private var selectedFile: RemoteModel.Sibling?
     @State private var errorMessage: String?
+    @State private var live: RemoteModel?
 
+    private var displayed: RemoteModel { live ?? model }
     private var installed: Bool { store.isInstalled(id: model.id) }
     private var isDownloading: Bool { store.activeInstalls.contains(model.id) }
     private var progress: Double { store.downloading[model.id] ?? 0 }
@@ -20,22 +22,22 @@ struct StoreDetailSheet: View {
                     .font(.system(size: 28))
                     .foregroundStyle(.indigo)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(model.displayName)
+                    Text(displayed.displayName)
                         .font(.title2).bold()
-                    Text("par \(model.author)")
+                    Text("par \(displayed.author)")
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Text(model.licenseLabel)
+                Text(displayed.licenseLabel)
                     .font(.caption)
                     .padding(5)
                     .background(Capsule().fill(.quaternary))
             }
 
             HStack(spacing: 16) {
-                statItem(value: "\(model.downloadCountText)", label: "téléchargements")
-                statItem(value: model.prettyContext, label: "contexte (tokens)")
-                if let total = model.totalSize {
+                statItem(value: "\(displayed.downloadCountText)", label: "téléchargements")
+                statItem(value: displayed.prettyContext, label: "contexte (tokens)")
+                if let total = displayed.totalSize {
                     statItem(value: FileFormat.bytes(total), label: "taille totale")
                 }
             }
@@ -43,7 +45,15 @@ struct StoreDetailSheet: View {
             .frame(maxWidth: .infinity)
             .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
 
-            if !model.ggufSiblings.isEmpty {
+            if displayed.ggufSiblings.isEmpty {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Chargement des versions disponibles…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Version à télécharger")
                         .font(.headline)
@@ -51,10 +61,10 @@ struct StoreDetailSheet: View {
                 }
             }
 
-            if let error = errorMessage {
+            if let error = store.downloadError[model.id] ?? errorMessage {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.red)
             }
 
             Spacer()
@@ -70,14 +80,30 @@ struct StoreDetailSheet: View {
         .frame(width: 480, height: 540)
         .onAppear {
             if selectedFile == nil {
-                selectedFile = model.defaultFile ?? model.ggufSiblings.first
+                selectedFile = displayed.defaultFile ?? displayed.ggufSiblings.first
+            }
+            resolveIfNeeded()
+        }
+    }
+
+    private func resolveIfNeeded() {
+        guard live == nil, displayed.ggufSiblings.isEmpty else { return }
+        Task {
+            do {
+                let detail = try await HuggingFaceClient.detail(id: model.id)
+                await MainActor.run { live = detail }
+                if selectedFile == nil {
+                    selectedFile = detail.defaultFile ?? detail.ggufSiblings.first
+                }
+            } catch {
+                await MainActor.run { errorMessage = error.localizedDescription }
             }
         }
     }
 
     private var fileList: some View {
         VStack(spacing: 6) {
-            ForEach(model.ggufSiblings) { file in
+            ForEach(displayed.ggufSiblings) { file in
                 Button {
                     selectedFile = file
                 } label: {
@@ -148,7 +174,7 @@ struct StoreDetailSheet: View {
     private func install() {
         guard let file = selectedFile else { return }
         Task {
-            await store.download(model, file: file)
+            await store.download(displayed, file: file)
             errorMessage = nil
         }
     }

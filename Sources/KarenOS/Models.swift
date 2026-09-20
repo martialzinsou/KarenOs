@@ -4,6 +4,7 @@ struct RemoteModel: Identifiable, Hashable, Codable {
     let id: String
     var downloads: Int?
     var likes: Int?
+    var gated: GatedValue?
     var cardData: CardData?
     var gguf: GGUFInfo?
     var siblings: [Sibling]?
@@ -27,6 +28,24 @@ struct RemoteModel: Identifiable, Hashable, Codable {
         func encode(to encoder: Encoder) throws {
             var container = encoder.singleValueContainer()
             try container.encode(values)
+        }
+    }
+
+    struct GatedValue: Codable, Hashable {
+        var isGated: Bool = false
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let bool = try? container.decode(Bool.self) {
+                isGated = bool
+            } else if let string = try? container.decode(String.self) {
+                isGated = !string.isEmpty && string != "false"
+            }
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            try container.encode(isGated)
         }
     }
 
@@ -85,8 +104,8 @@ struct RemoteModel: Identifiable, Hashable, Codable {
     var defaultFile: Sibling? {
         let files = ggufSiblings
         if files.isEmpty { return nil }
-        for pattern in ["q4_k_m", "q4_0", "q5_k_m", "q3_k_m", "q8_0"] {
-            if let hit = files.first(where: { $0.rfilename.contains(pattern) }) {
+        for pattern in ["q4_k_m", "q4_0", "q4", "q5_k_m", "q3_k_m", "q8_0"] {
+            if let hit = files.first(where: { $0.rfilename.lowercased().contains(pattern) }) {
                 return hit
             }
         }
