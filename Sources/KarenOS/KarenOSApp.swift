@@ -5,12 +5,14 @@ import AppKit
 struct KarenOSApp: App {
     @StateObject private var store = ModelStore()
     @StateObject private var engine = EngineManager()
+    @StateObject private var skills = SkillStore()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
                 .environmentObject(engine)
+                .environmentObject(skills)
                 .frame(minWidth: 920, minHeight: 620)
         }
         .windowResizability(.contentMinSize)
@@ -28,6 +30,9 @@ struct ContentView: View {
 
             StoreView()
                 .tabItem { Label("Boutique", systemImage: "storefront") }
+
+            SkillsView()
+                .tabItem { Label("Compétences", systemImage: "wand.and.stars") }
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

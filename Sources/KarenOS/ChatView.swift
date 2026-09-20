@@ -5,6 +5,7 @@ struct ChatView: View {
 
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
+    @EnvironmentObject private var skillStore: SkillStore
 
     enum Phase: Equatable {
         case loading
@@ -65,10 +66,43 @@ struct ChatView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            skillMenu
             statusPill
         }
         .padding()
         .background(.bar)
+    }
+
+    private var skillMenu: some View {
+        Menu {
+            Button {
+                skillStore.setActive(skillStore.activeSkill, isActive: false)
+            } label: {
+                Label("Aucune", systemImage: skillStore.activeSkillID == nil ? "checkmark" : "")
+            }
+            Divider()
+            ForEach(skillStore.skills) { skill in
+                Button {
+                    skillStore.setActive(skill, isActive: skillStore.activeSkillID != skill.id)
+                } label: {
+                    Label(skill.name, systemImage: skillStore.activeSkillID == skill.id ? "checkmark" : "circle")
+                }
+            }
+            if skillStore.skills.isEmpty {
+                Text("Crée une compétence dans l'onglet Compétences.")
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: skillStore.activeSkill?.iconSymbol ?? "wand.and.stars")
+                Text(skillStore.activeSkill?.name ?? "Compétence")
+            }
+            .font(.caption)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(Color.indigo.opacity(0.14)))
+            .foregroundStyle(.indigo)
+        }
+        .menuStyle(.borderlessButton)
     }
 
     @ViewBuilder
@@ -164,6 +198,11 @@ struct ChatView: View {
             Text("Tout est traité en local sur ton Mac.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+            if let active = skillStore.activeSkill, !active.systemPrompt.isEmpty {
+                Label("Compétence active : \(active.name)", systemImage: active.iconSymbol)
+                    .font(.caption)
+                    .foregroundStyle(.indigo)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 60)
@@ -221,7 +260,10 @@ struct ChatView: View {
             phase = .failed("Le moteur ne répond pas.")
             return
         }
-        let history = Array(messages.dropLast())
+        var history = Array(messages.dropLast())
+        if let active = skillStore.activeSkill, !active.systemPrompt.isEmpty {
+            history.insert(.system(active.systemPrompt), at: 0)
+        }
         var accumulated = ""
         do {
             for try await piece in ChatService.streamReply(history, baseURL: baseURL) {
