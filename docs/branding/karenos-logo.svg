@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#1A1E3A"/>
+      <stop offset="55%" stop-color="#0D1028"/>
+      <stop offset="100%" stop-color="#070819"/>
+    </radialGradient>
+
+    <radialGradient id="core" cx="38%" cy="32%" r="80%">
+      <stop offset="0%" stop-color="#B7A6FF"/>
+      <stop offset="35%" stop-color="#7C5CFF"/>
+      <stop offset="78%" stop-color="#3E2E9E"/>
+      <stop offset="100%" stop-color="#2A1F6E"/>
+    </radialGradient>
+
+    <linearGradient id="orbit" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C5CFF"/>
+      <stop offset="55%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#7CFFE8"/>
+    </linearGradient>
+
+    <radialGradient id="token" cx="35%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#E8FFF9"/>
+      <stop offset="45%" stop-color="#7CFFE8"/>
+      <stop offset="100%" stop-color="#00C8F8"/>
+    </radialGradient>
+
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="26" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="halo" x="-150%" y="-150%" width="400%" height="400%">
+      <feGaussianBlur stdDeviation="70"/>
+    </filter>
+  </defs>
+
+  <!-- Fond icône macOS (squircle) -->
+  <rect x="32" y="32" width="960" height="960" rx="215" fill="url(#bg)"/>
+
+  <!-- Halo externe -->
+  <circle cx="512" cy="512" r="268" fill="#7C5CFF" opacity="0.16" filter="url(#halo)"/>
+
+  <!-- Anneau fin extérieur -->
+  <circle cx="512" cy="512" r="332" fill="none" stroke="#7C5CFF" stroke-opacity="0.22" stroke-width="6"/>
+
+  <!-- Orbite de tokens -->
+  <g transform="rotate(-18 512 512)">
+    <ellipse cx="512" cy="512" rx="286" ry="118" fill="none" stroke="url(#orbit)" stroke-width="10" stroke-linecap="round" opacity="0.9"/>
+    <circle cx="784" cy="585" r="26" fill="url(#token)" filter="url(#glow)"/>
+    <circle cx="266" cy="466" r="14" fill="url(#token)" opacity="0.55"/>
+  </g>
+
+  <!-- Noyau -->
+  <circle cx="512" cy="512" r="150" fill="url(#core)" filter="url(#glow)"/>
+  <circle cx="512" cy="512" r="150" fill="url(#core)"/>
+
+  <!-- Reflet du noyau -->
+  <circle cx="470" cy="456" r="60" fill="#FFFFFF" opacity="0.12"/>
+  <ellipse cx="560" cy="600" rx="70" ry="26" fill="#000000" opacity="0.18"/>
+
+  <!-- Point lumineux central (token-maître) -->
+  <circle cx="512" cy="512" r="46" fill="url(#token)" opacity="0.95"/>
+  <circle cx="512" cy="512" r="30" fill="#DFFFFB"/>
+</svg>

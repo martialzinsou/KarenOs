@@ -24,6 +24,9 @@ printf 'APPL????' > "$APP/Contents/PkgInfo"
 if [ -f Packaging/KarenOS.icns ]; then
   cp Packaging/KarenOS.icns "$APP/Contents/Resources/AppIcon.icns"
 fi
+if [ -f docs/branding/karenos-logo.png ]; then
+  cp docs/branding/karenos-logo.png "$APP/Contents/Resources/KarenOS-logo.png"
+fi
 
 echo "== Signature ad-hoc =="
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || echo "(signature ignorée)"

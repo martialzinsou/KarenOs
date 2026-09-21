@@ -1,5 +1,9 @@
 # KarenOS
 
+<p align="center">
+  <img src="docs/branding/karenos-logo.svg" alt="Logo KarenOS — Noyau local" width="220"/>
+</p>
+
 <!--
     SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
     Auteur   : Martial Zinsou

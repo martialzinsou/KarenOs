@@ -61,22 +61,25 @@ struct ContentView: View {
     }()
 
     var body: some View {
-        TabView(selection: $tab) {
-            LibraryView()
-                .tabItem { Label("Mes modèles", systemImage: "brain.head.profile") }
-                .tag(0)
+        VStack(spacing: 0) {
+            brandHeader
+            TabView(selection: $tab) {
+                LibraryView()
+                    .tabItem { Label("Mes modèles", systemImage: "brain.head.profile") }
+                    .tag(0)
 
-            StoreView()
-                .tabItem { Label("Boutique", systemImage: "storefront") }
-                .tag(1)
+                StoreView()
+                    .tabItem { Label("Boutique", systemImage: "storefront") }
+                    .tag(1)
 
-            AgentsView()
-                .tabItem { Label("Agents", systemImage: "person.3") }
-                .tag(2)
+                AgentsView()
+                    .tabItem { Label("Agents", systemImage: "person.3") }
+                    .tag(2)
 
-            SkillsView()
-                .tabItem { Label("Compétences", systemImage: "wand.and.stars") }
-                .tag(3)
+                SkillsView()
+                    .tabItem { Label("Compétences", systemImage: "wand.and.stars") }
+                    .tag(3)
+            }
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -91,6 +94,36 @@ struct ContentView: View {
             runner.stop()
             engine.stop()
         }
+    }
+
+    /// En-tête brandé : logo KarenOS + nom, chargé depuis les ressources.
+    private var brandHeader: some View {
+        HStack(spacing: 10) {
+            if let url = Bundle.main.url(forResource: "KarenOS-logo", withExtension: "png"),
+               let image = NSImage(contentsOf: url) {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: 24, height: 24)
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            } else {
+                Image(systemName: "sparkles")
+            }
+            Text("KarenOS")
+                .font(.title3.bold())
+            Text("IA générative en local")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text("100 % hors ligne")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(Color.secondary.opacity(0.12)))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
     }
 }
 
