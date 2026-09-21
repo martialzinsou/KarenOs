@@ -18,33 +18,49 @@ guard let ctx = CGContext(
     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
 ) else { fatalError("ctx") }
 
-// Fond dégradé arrondi
-let colors = [NSColor(calibratedRed: 0.30, green: 0.35, blue: 0.95, alpha: 1).cgColor,
-              NSColor(calibratedRed: 0.60, green: 0.25, blue: 0.90, alpha: 1).cgColor] as CFArray
-let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1])!
-let rect = CGRect(x: 0, y: 0, width: size, height: size)
-let path = CGPath(roundedRect: rect, cornerWidth: 200, cornerHeight: 200, transform: nil)
+// --- Squircle blanc (style icône Meta) ---
+let bgPath = CGPath(roundedRect: CGRect(x: 32, y: 32, width: 960, height: 960),
+                    cornerWidth: 215, cornerHeight: 215, transform: nil)
+ctx.setFillColor(NSColor.white.cgColor)
+ctx.addPath(bgPath)
+ctx.fillPath()
+
+// --- Monogramme "K" en ruban : dégradé bleu -> cyan appliqué sur le tracé ---
+let kPath = CGMutablePath()
+kPath.move(to: CGPoint(x: 520, y: 224))                      // jambe (C vire 800)
+kPath.addCurve(to: CGPoint(x: 500, y: 784),
+               control1: CGPoint(x: 470, y: 404),
+               control2: CGPoint(x: 470, y: 594))
+kPath.move(to: CGPoint(x: 505, y: 554))                      // bras supérieur
+kPath.addCurve(to: CGPoint(x: 800, y: 834),
+               control1: CGPoint(x: 600, y: 644),
+               control2: CGPoint(x: 680, y: 704))
+kPath.move(to: CGPoint(x: 505, y: 504))                      // bras inférieur
+kPath.addCurve(to: CGPoint(x: 830, y: 172),
+               control1: CGPoint(x: 640, y: 384),
+               control2: CGPoint(x: 740, y: 264))
+
+let gradientColors = [
+    NSColor(calibratedRed: 0.039, green: 0.506, blue: 1.0, alpha: 1).cgColor,    // #0A81FF
+    NSColor(calibratedRed: 0.0,   green: 0.776, blue: 1.0, alpha: 1).cgColor,    // #00C6FF
+] as CFArray
+let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                      colors: gradientColors, locations: [0, 1])!
+
 ctx.saveGState()
-ctx.addPath(path)
+ctx.addPath(kPath)
+ctx.setLineWidth(170)
+ctx.setLineCap(.round)
+ctx.setLineJoin(.round)
+ctx.replacePathWithStrokedPath()
 ctx.clip()
-ctx.drawLinearGradient(grad, start: CGPoint(x: 0, y: CGFloat(size)), end: CGPoint(x: CGFloat(size), y: 0), options: [])
+ctx.drawLinearGradient(grad,
+                       start: CGPoint(x: 0, y: CGFloat(size)),
+                       end: CGPoint(x: CGFloat(size), y: 0),
+                       options: [])
 ctx.restoreGState()
 
-// Monogramme "K"
-let text = "K" as NSString
-let attrs: [NSAttributedString.Key: Any] = [
-    .font: NSFont.systemFont(ofSize: 640, weight: .bold),
-    .foregroundColor: NSColor.white
-]
-let ts = text.size(withAttributes: attrs)
-let origin = CGPoint(x: (CGFloat(size) - ts.width) / 2, y: (CGFloat(size) - ts.height) / 2)
-ctx.saveGState()
-// CoreText drawing
-let line = CTLineCreateWithAttributedString(NSAttributedString(string: "K", attributes: attrs))
-ctx.textPosition = CGPoint(x: origin.x, y: origin.y)
-CTLineDraw(line, ctx)
-ctx.restoreGState()
-
+// --- Export ---
 let out = ctx.makeImage()!
 let rep = NSBitmapImageRep(cgImage: out)
 let data = rep.representation(using: .png, properties: [:])!
@@ -68,4 +84,6 @@ sips -z 512 512 /tmp/karenos-icon/KarenOS-1024.png --out "$ICONSET/icon_512x512.
 cp /tmp/karenos-icon/KarenOS-1024.png "$ICONSET/icon_512x512@2x.png"
 rm -rf Packaging/KarenOS.icns
 iconutil -c icns "$ICONSET" -o Packaging/KarenOS.icns
-echo "Icône : Packaging/KarenOS.icns"
+
+cp /tmp/karenos-icon/KarenOS-1024.png docs/branding/karenos-logo.png
+echo "Icône : Packaging/KarenOS.icns + docs/branding/karenos-logo.png"
