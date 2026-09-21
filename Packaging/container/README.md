@@ -11,7 +11,7 @@ Il est publié automatiquement sur le **GitHub Container Registry** par l'action
 ## Image
 
 ```
-ghcr.io/martialzinsou/karenos-llama-server:latest
+ghcr.io/martialzinsou/karenos/karenos-llama-server:latest
 ```
 
 ## Utilisation (poste de travail / serveur avec Docker)
@@ -22,7 +22,7 @@ Le modèle GGUF est monté depuis l'hôte ; rien ne transite par le cloud :
 docker run --rm -p 8080:8080 \
   -v "$PWD/models:/models" \
   -e GGML_N_CTX=2048 \
-  ghcr.io/martialzinsou/karenos-llama-server:latest \
+  ghcr.io/martialzinsou/karenos/karenos-llama-server:latest \
   -m /models/karenos-smol.gguf --host 0.0.0.0 --port 8080
 ```
 

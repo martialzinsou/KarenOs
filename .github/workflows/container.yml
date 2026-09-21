@@ -37,5 +37,5 @@ jobs:
           file: Packaging/container/Dockerfile
           push: true
           tags: |
-            ghcr.io/martialzinsou/karenos-llama-server:latest
-            ghcr.io/martialzinsou/karenos-llama-server:${{ steps.tag.outputs.version }}
+            ghcr.io/martialzinsou/karenos/karenos-llama-server:latest
+            ghcr.io/martialzinsou/karenos/karenos-llama-server:${{ steps.tag.outputs.version }}
