@@ -1,5 +1,7 @@
 # Diagrammes UML — import sur Wikimedia Commons
 
+**Auteur : Martial Zinsou**
+
 Ces 8 SVG sont générés depuis les sources [Mermaid](../../WIKIPEDIA.md) du projet
 (sections techniques). Ils sont destinés à être **téléversés sur Wikimedia Commons**
 puis référencés dans le brouillon Wikipedia (`docs/wikipedia/Brouillon_KarenOS.wiki`).

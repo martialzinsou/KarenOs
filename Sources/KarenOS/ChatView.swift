@@ -1,3 +1,4 @@
+// KarenOS — auteur : Martial Zinsou
 //  ====================================================================
 //    KarenOS — ChatView.swift
 //    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp

@@ -1,3 +1,4 @@
+# Auteur : Martial Zinsou
 # KarenOS — moteur llama.cpp pour serveurs
 #
 # Image conteneur du moteur d'inférence de KarenOS : seul composant portable

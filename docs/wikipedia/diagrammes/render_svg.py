@@ -1,3 +1,4 @@
+__author__ = "Martial Zinsou"
 # -*- coding: utf-8 -*-
 """Régénère les SVG UML de docs/WIKIPEDIA.md via l'API Kroki (rendu Mermaid)."""
 import re, json, time, os, sys, urllib.request, urllib.error

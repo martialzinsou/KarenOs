@@ -1,5 +1,7 @@
 # KarenOS llama-server (conteneur)
 
+**Auteur : Martial Zinsou**
+
 Le composant portable de KarenOS : le **moteur d'inférence** `llama-server`
 (llama.cpp), compilé pour **Linux x86_64 (AVX2)**. Il permet de faire tourner
 l'IA générative de KarenOS sur un serveur de l'infrastructure (intranet,

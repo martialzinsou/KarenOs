@@ -1,5 +1,7 @@
 # KarenOS Documentation (US English)
 
+**Auteur : Martial Zinsou**
+
 <!--
     SEO — KarenOS · Project reference: https://github.com/martialzinsou/KarenOs
     Author   : Martial Zinsou

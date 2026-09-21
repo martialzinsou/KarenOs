@@ -1,3 +1,4 @@
+// KarenOS — auteur : Martial Zinsou
 //  ====================================================================
 //    KarenOS — AgentRunner.swift
 //    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
