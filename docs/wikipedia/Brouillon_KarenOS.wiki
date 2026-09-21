@@ -1,0 +1,215 @@
+<!--
+    ============================================================
+    BROUILLON POUR FR.WIKIPEDIA.ORG — KarenOS
+    ============================================================
+    Usage :
+      1. Connecte-toi sur fr.wikipedia.org (compte « directionDSI »).
+      2. Ouvre https://fr.wikipedia.org/wiki/Utilisateur:directionDSI/KarenOS
+      3. Colle tout ce fichier (depuis {{Brouillon}} jusqu'aux catégories).
+      4. Clique « Publier les modifications ».
+      5. Pense à déclarer ton conflit d'intérêts sur ta page utilisateur.
+      6. Avant toute soumission (ou réparation directe en cas de refus),
+         ajoute les SOURCES SECONDAIRES INDÉPENDANTES manquantes (cf. § « Notoriété »).
+    NB : Wikipédia ne supporte pas Mermaid. Les 7 diagrammes UML doivent être
+    exportés en PNG/SVG, importés sur Commons avec une licence libre (MIT) et
+    référencés ici ; leurs sources Mermaid sont fournies en annexe.
+    ============================================================
+-->
+
+{{Brouillon}}<!-- Laisser ce bandeau tant que la page n'est pas publiée dans l'espace encyclopédique -->
+
+'''KarenOS''' est une [[Application macOS|application]] native pour [[macOS]] permettant de [[Téléchargement|télécharger]] des [[Grand modèle de langage|modèles de langage]] au format [[GGUF]] depuis [[Hugging Face]] et d'interagir avec eux localement, sans connexion au réseau une fois le modèle chargé. L'inférence est assurée par le moteur [[Llama.cpp|llama-server]], exécuté en sous-processus et exposant une interface de programmation compatible avec celle d'[[OpenAI]].
+
+Le projet est développé par Martial Zinsou et distribué en [[Licence MIT|licence MIT]]. Il est hébergé sur [[GitHub]]<ref>{{Lien web |titre=Dépôt source KarenOS |url=https://github.com/martialzinsou/KarenOs |site=GitHub |consulté le=21 septembre 2026}}</ref>.
+
+{{Infobox Logiciel
+ | nom                        = KarenOS
+ | logo                       = KarenOS-logo.svg
+ | développeur                = Martial Zinsou
+ | genre                      = [[Intelligence artificielle générative]]
+ | écrit en                   = [[Swift (langage)|Swift]], [[SwiftUI]]
+ | environnements             = [[macOS]]
+ | format_plugin              = <!-- zone vide : format des modules (non applicable) -->
+ | date de première version   = 2026
+ | dernière version           = 1.0.0
+ | date de dernière version   = septembre 2026
+ | type de licence            = [[Licence MIT|MIT]]
+ | dépôt                      = https://github.com/martialzinsou/KarenOs
+ | site web                   = https://github.com/martialzinsou/KarenOs
+}}
+
+== Description ==
+
+KarenOS est conçue comme un poste de travail d'[[IA générative]] hors ligne : l'utilisateur installe un modèle (fichiers [[GGUF]], souvent de quelques centaines de [[mégaoctet]]s à plusieurs [[gibioctet]]s), puis dialogue avec lui par l'intermédiaire d'une interface [[SwiftUI]]. Les réponses sont affichées en [[streaming]] (génération progressive, token par token).
+
+Le moteur d'inférence, `llama-server`, est téléchargé automatiquement au premier lancement depuis les [[Version (informatique)|releases]] [[GitHub]] de [[llama.cpp]], puis lancé en sous-processus n'écoutant que sur l'[[adresse de boucle locale]] (`127.0.0.1`) sur un port libre. Le protocole utilisé (`/v1/chat/completions`, événements [[Server-Sent Events|SSE]]) est compatible avec les spécifications de l'API de chat d'OpenAI.
+
+Trois choix structurent le projet :
+
+- la maîtrise des données : une fois le modèle téléchargé, aucun prompt ni résultat ne quitte la machine ;
+- l'interopérabilité : le moteur étant compatible OpenAI, il peut être utilisé par d'autres clients ;
+- l'agrégation de capacités locales, via des agents autonomes capables d'exécuter des commandes.
+
+== Fonctionnalités ==
+
+{| class="wikitable"
+|-
+! Fonctionnalité
+! Description
+|-
+| Chat local en streaming
+| Dialogue avec un modèle installé, avec affichage progressif des réponses.
+|-
+| Boutique de modèles
+| Catalogue de modèles GGUF (sélection épinglée : [[Qwen]]2.5-0,5B/1,5B/3B, SmolLM2, Phi-3-mini) et recherche sur l'API [[Hugging Face]], téléchargement avec progression.
+|-
+| Bibliothèque de modèles
+| Registre des modèles installés sur disque, lancement du chat.
+|-
+| Agents autonomes
+| Missions répétables : déclencheur (manuel, au lancement, ou à intervalle), boucle, conditions d'arrêt, journal d'exécution, exécution de commandes shell et lancement d'applications.
+|-
+| Multimodal
+| Pièces jointes (image, vidéo, audio, fichier), mode vision automatique lorsqu'un projecteur multimodal (`*.mmproj`) est présent, et dictée vocale locale (framework [[Speech framework|Speech]]).
+|-
+| Compétences
+| Consignes réutilisables structurées en rôle, contexte et obligations de résultats, injectées dans le prompt système de n'importe quel modèle.
+|}
+
+== Architecture ==
+
+L'application est écrite en [[Swift (langage)|Swift]] / [[SwiftUI]] et compilée à l'aide de `swiftc` (sans environnement de développement graphique). Cinq « stores » (`ModelStore`, `EngineManager`, `SkillStore`, `AgentStore`, `AgentRunner`), observables via le framework Combine, centralisent l'état : registre des modèles, cycle de vie du moteur, compétences, agents et exécution des missions.
+
+Le chargement d'un modèle suit une séquence contrôlée : le moteur est démarré avec le fichier GGUF, puis l'application interroge l'endpoint `GET /health` toutes les 0,8 seconde (au maximum 150 tentatives, soit 120 secondes) avant de déclarer le modèle prêt. La détection d'un fichier `*.mmproj` active le mode vision.
+
+=== Diagrammes ===
+
+Les diagrammes UML du projet ([[Diagrams.net]]/[[Mermaid (outil)|Mermaid]]) sont à exporter en image pour publication ; leurs sources sont reproduites en annexe.
+
+* [[Fichier:KarenOS-uca.svg|vignette|Diagramme de [[cas d'utilisation]]]]
+* [[Fichier:KarenOS-classes.svg|vignette|[[Diagramme de classes]]]]
+* [[Fichier:KarenOS-sequence.svg|vignette|[[Diagramme de séquence]] (inférence en streaming)]]
+* [[Fichier:KarenOS-etats-moteur.svg|vignette|[[Diagramme de transition d'états]] du moteur]]
+* [[Fichier:KarenOS-etats-agent.svg|vignette|Diagramme d'états d'une mission d'agent]]
+* [[Fichier:KarenOS-composants.svg|vignette|[[Diagramme de composants]] et de déploiement]]
+
+== Sécurité et traitement des données ==
+
+Les concepteurs affirment qu'aucune donnée n'est transmise à un service tiers après le téléchargement des modèles{{Référence nécessaire}}. Le modèle chargé est verrouillé en mémoire physique (option `--mlock`). Les modèles strictement textuels reçoivent une consigne leur interdisant de produire des messages d'erreur inventés lorsqu'un fichier est joint sans capacité de vision ; les pièces jointes ne sont jamais transmises à un modèle incapable de les traiter.
+
+La capacité d'un agent à exécuter du code (via l'[[interpréteur de commandes]] de l'utilisateur, `/bin/zsh -lc`) est activée explicitement par agent, plafonnée à trente actions par mission et bornée à trente secondes par commande.
+
+== Distribution ==
+
+La version 1.0.0 est distribuée sous forme d'[[archive]] compressée contenant `KarenOS.app`<ref>{{Lien web |titre=Release v1.0.0 |url=https://github.com/martialzinsou/KarenOs/releases/tag/v1.0.0 |site=GitHub |consulté le=21 septembre 2026}}</ref>. Le moteur seul est également publié comme image de [[conteneur]] sur le [[GitHub Container Registry]] (architecture Linux [[X86-64|x86-64]], instructions [[AVX2]])<ref>{{Lien web |titre=Image conteneur KarenOS llama-server |url=https://github.com/users/martialzinsou/packages/container/package/karenos%2Fkarenos-llama-server |site=GitHub Container Registry |consulté le=21 septembre 2026}}</ref>, construite automatiquement à chaque étiquette (`tag`) `v*` par une action [[GitHub Actions]].
+
+== Historique ==
+
+{| class="wikitable"
+|-
+! Version
+! Date
+! Principales évolutions
+|-
+| 1.0.0
+| 2026
+| Première version : chat streaming, boutique de modèles, agents autonomes (avec actions shell), multimodal, compétences, moteur optimisé (AVX2 + BLAS Apple, attention flash, cache KV quantifié), documentation bilingue, image conteneur.
+|}
+
+== Notoriété et sources ==
+
+Conformément aux critères d'admissibilité de Wikipédia, un article sur un logiciel doit s'appuyer sur des sources '''secondaires indépendantes''' (articles de presse spécialisée, comparatifs, ouvrages), et non sur la seule documentation du projet. À la date de rédaction de ce brouillon, les références ci-dessous sont des **sources primaires** (dépôt, releases, wiki) : elles attestent des caractéristiques techniques mais ne suffisent pas à la [[Wikipédia:Notoriété|notoriété encyclopédique]].
+
+À compléter avant soumission (exemples, à remplacer par les références réelles) :
+
+* « comparative de IA locales hors ligne » — presse spécialisée (ex. annuaire de logiciels).
+* domination neutre issue d'un blog ou d'un magazine technique.
+
+== Sources et références ==
+
+{{Références}}
+
+=== Lien externe ===
+
+* {{Officiel|https://github.com/martialzinsou/KarenOs}} — dépôt officiel
+* [[Llama.cpp]] — moteur sous-jacent
+* [[Hugging Face]] — hébergeur des modèles GGUF
+
+== Annexes : sources des diagrammes UML ==
+
+''Mermaid n'est pas supporté sur Wikipédia ; ces sources servent à générer les fichiers PNG/SVG à importer sur [[Wikimedia Commons]].''
+
+**Diagramme de classes**
+
+<syntaxhighlight lang="mermaid">
+classDiagram
+    direction LR
+    KarenOSApp *-- ModelStore
+    KarenOSApp *-- EngineManager
+    KarenOSApp *-- SkillStore
+    KarenOSApp *-- AgentStore
+    KarenOSApp *-- AgentRunner
+    ContentView --> LibraryView
+    ContentView --> StoreView
+    ContentView --> AgentsView
+    ContentView --> SkillsView
+    ChatView ..> ChatService
+    EngineManager ..> Process
+    AgentRunner ..> ActionRunner
+    AgentRunner ..> ChatService
+    ModelStore *-- LocalModel
+    AgentStore *-- Agent
+    Agent *-- AgentTrigger
+    Agent *-- AgentEndCondition
+    SkillStore *-- Skill
+</syntaxhighlight>
+
+**Diagramme de séquence (inférence)**
+
+<syntaxhighlight lang="mermaid">
+sequenceDiagram
+    participant U as Utilisateur
+    participant V as ChatView
+    participant S as ChatService
+    participant E as llama-server
+    U->>V: message
+    V->>S: streamReply(history)
+    S->>E: POST /v1/chat/completions (stream)
+    E-->>S: SSE data (delta.content)
+    S-->>V: token
+    V-->>U: affichage
+</syntaxhighlight>
+
+**Machine à états du moteur**
+
+<syntaxhighlight lang="mermaid">
+stateDiagram-v2
+    [*] --> idle
+    idle --> installingEngine : moteur manquant
+    installingEngine --> ready : extraction
+    installingEngine --> failed : échec
+    ready --> loading : load(model)
+    loading --> running : /health 200
+    loading --> failed : timeout
+    running --> ready : stop()
+    failed --> ready : nouvelle tentative
+</syntaxhighlight>
+
+**États d'une mission d'agent**
+
+<syntaxhighlight lang="mermaid">
+stateDiagram-v2
+    [*] --> running : start()
+    running --> paused : pause()
+    paused --> running : resume()
+    running --> finished : condition de fin
+    running --> stopped : stop()
+    running --> failed : modèle absent
+    failed --> running : relance
+    stopped --> running : relance
+</syntaxhighlight>
+
+[[:Catégorie:Logiciel macOS]]
+[[:Catégorie:Intelligence artificielle]]
+[[:Catégorie:Réseau de neurones appliqué]]
+<!-- Les catégories ci-dessus sont volontairement inactives ([[:Catégorie:...]]) tant que la page est un brouillon -->
