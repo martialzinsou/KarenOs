@@ -158,11 +158,17 @@ final class EngineManager: ObservableObject {
 
         let proc = Process()
         proc.executableURL = exe
+        let threads = max(1, ProcessInfo.processInfo.activeProcessorCount / 2)
         proc.arguments = [
             "-m", model.fileURL.path,
             "--host", "127.0.0.1",
             "--port", "\(port)",
-            "-c", "2048"
+            "-c", "2048",
+            "-t", "\(threads)",
+            "--flash-attn", "on",
+            "-ctk", "q8_0",
+            "-ctv", "q8_0",
+            "--mlock"
         ]
         proc.currentDirectoryURL = extractedDir
         proc.standardOutput = logHandle
