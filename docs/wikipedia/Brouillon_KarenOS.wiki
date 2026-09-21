@@ -84,14 +84,16 @@ Le chargement d'un modèle suit une séquence contrôlée : le moteur est démar
 
 === Diagrammes ===
 
-Les diagrammes UML du projet ([[Diagrams.net]]/[[Mermaid (outil)|Mermaid]]) sont à exporter en image pour publication ; leurs sources sont reproduites en annexe.
+Les diagrammes UML du projet (générés via [[Mermaid (langage)|Mermaid]]) sont importés sur [[Wikimedia Commons]] ; leurs sources sont reproduites en annexe.
 
-* [[Fichier:KarenOS-uca.svg|vignette|Diagramme de [[cas d'utilisation]]]]
-* [[Fichier:KarenOS-classes.svg|vignette|[[Diagramme de classes]]]]
-* [[Fichier:KarenOS-sequence.svg|vignette|[[Diagramme de séquence]] (inférence en streaming)]]
-* [[Fichier:KarenOS-etats-moteur.svg|vignette|[[Diagramme de transition d'états]] du moteur]]
-* [[Fichier:KarenOS-etats-agent.svg|vignette|Diagramme d'états d'une mission d'agent]]
-* [[Fichier:KarenOS-composants.svg|vignette|[[Diagramme de composants]] et de déploiement]]
+* [[Fichier:karenos-composants-deploiement.svg|vignette|[[Diagramme de composants]] et de déploiement]]
+* [[Fichier:karenos-cas-utilisation.svg|vignette|Diagramme de [[cas d'utilisation]]]]
+* [[Fichier:karenos-classes.svg|vignette|[[Diagramme de classes]]]]
+* [[Fichier:karenos-sequence-inference.svg|vignette|[[Diagramme de séquence]] (inférence en streaming)]]
+* [[Fichier:karenos-sequence-chargement.svg|vignette|Diagramme de séquence (chargement du moteur)]]
+* [[Fichier:karenos-etats-moteur.svg|vignette|[[Diagramme de transition d'états]] du moteur]]
+* [[Fichier:karenos-etats-agent.svg|vignette|Diagramme d'états d'une mission d'agent]]
+* [[Fichier:karenos-activite-agent.svg|vignette|[[Diagramme d'activité]] de la boucle d'un agent]]
 
 == Sécurité et traitement des données ==
 
