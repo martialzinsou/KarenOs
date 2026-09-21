@@ -16,6 +16,8 @@ KarenOS est une application native macOS qui permet de **télécharger des modè
 > **Auteur : Martial Zinsou** — 100 % Swift / SwiftUI, sans Xcode (compilation `swiftc`).
 >
 > **🇺🇸 US English version:** [docs/DOCUMENTATION_EN.md](DOCUMENTATION_EN.md)
+>
+> **📖 Page encyclopédique (style Wikipédia, FR) :** [docs/WIKIPEDIA.md](WIKIPEDIA.md)
 
 ---
 
