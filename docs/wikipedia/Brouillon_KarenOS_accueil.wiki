@@ -1,0 +1,182 @@
+<!--
+    ============================================================================
+    BROUILLON KARENOS — STRUCTURE "ACCUEIL 2017" (fr.wikipedia)
+    ============================================================================
+Ce fichier reproduit la syntaxe de la page d'accueil de Wikipédia en français
+(structure « accueil_2017 ») : bandeau titre, div#accueil_2017_contenu,
+portail-gauche / portail-droite, cadres accueil_2017_cadre, liste-horizontale,
+{{#if:{{{inclusion pour protection|}}}||…}}, {| class="wikitable"|},
+__NOTOC__ et __NOEDITSECTION__.
+Le bandeau {{Accueil/Titre}} et les références vers l'espace « Wikipédia:… »
+ont été remplacés par des équivalents adaptés au brouillon du projet KarenOS
+(dépôt GitHub, wiki, releases, issues).
+    NB : les classes CSS .accueil_2017_* sont définies pour la page d'accueil ;
+    sur une sous-page utilisateur leur rendu peut être partiel (syntaxe fidèle
+    conservée). Avant soumission : ajouter des sources secondaires indépendantes.
+    ============================================================================
+-->
+
+<div style="text-align:center; padding:0.4em 0; font-size:1.7em; font-weight:bold;">KarenOS</div>
+<div style="text-align:center; font-size:1.05em; margin-bottom:1.2em;">IA générative locale pour macOS — dépôt public sous licence MIT</div><!-- CONTENU -->
+<div id="accueil_2017_contenu">
+<div class="portail-gauche">
+
+<!-- POINT CULMINANT DU PROJET -->
+<div class="accueil_2017_cadre">
+<h2>Point culminant du projet</h2>
+{{#if:{{{inclusion pour protection|}}}||'''KarenOS 1.0''' — station d'[[IA générative]] locale pour [[macOS]] : dialogue hors ligne en [[streaming]] avec un [[grand modèle de langage]] au format [[GGUF]], pilotage par [[Agent intelligent|agents]] autonomes (boucle, déclencheurs, conditions de fin, actions [[shell]]), mode vision automatique et dictée vocale, sans aucune transmission de données vers un tiers après le téléchargement d'un modèle. Le moteur, issu de [[llama.cpp]] (llama-server), est publié aussi en image [[conteneur]] pour les serveurs [[Système d'information|DSI]]. Toute l'application est en [[Licence MIT|licence MIT]] et son code est public<ref>{{Lien web |titre=Dépôt source |url=https://github.com/martialzinsou/KarenOs |site=GitHub |consulté le=21 septembre 2026}}</ref>.
+}}
+<div class="liste-horizontale accueil_2017_pied">
+* '''[[Utilisateur:directionDSI/KarenOS|Page du brouillon]]'''
+* '''[[GitHub Pages : statistiques du dépôt|Statistiques du dépôt]]'''
+</div>
+</div>
+
+
+<!-- HISTORIQUE DES VERSIONS -->
+<div class="accueil_2017_cadre">
+<h2>Historique des versions</h2>
+{{#if:{{{inclusion pour protection|}}}||{| class="wikitable"
+|-
+! Version
+! Date
+! Principales évolutions
+|-
+| 1.0.0
+| septembre 2026
+| Chat streaming, boutique de modèles GGUF ([[Hugging Face]]), agents autonomes avec actions [[shell]] et lancement d'applications, multimodal (image, vidéo, audio, dictée vocale), compétences réutilisables, moteur optimisé ([[AVX2]], BLAS [[Apple]], cache KV quantifié), documentation bilingue, image conteneur Linux [[X86-64|x86-64]].
+|}
+}}
+<div class="liste-horizontale accueil_2017_pied">
+* '''[[Changelog du dépôt|Changelog]]'''
+* '''[[Release 1.0.0 du projet|Releases]]'''
+</div>
+</div>
+
+
+<!-- LE SAVIEZ-VOUS ? -->
+<div class="accueil_2017_cadre">
+<h2>Le saviez-vous ?</h2>
+{{#if:{{{inclusion pour protection|}}}||* Les modèles embarqués ([[Qwen]]2.5-0,5B/1,5B/3B, SmolLM2, Phi-3-mini) tiennent tous dans la mémoire vive d'un MacBook ;
+* le moteur ne s'annonce prêt qu'après 150 sondages consécutifs de `GET /health` (toutes les 0,8 seconde, délai maximal 120 secondes) ;
+* un agent peut exécuter des commandes dans `/bin/zsh -lc`, plafonnées à 30 secondes et 30 actions par mission ;
+* les modèles strictement textuels se voient interdire d'inventer des messages d'erreur sur de fausses capacités vision.
+}}
+<div class="liste-horizontale accueil_2017_pied">
+* '''[[FAQ du projet|FAQ]]'''
+* '''[[Bugs connus|Bugs connus]]'''
+</div>
+</div>
+</div>
+<div class="portail-droite">
+
+
+<!-- PRÉSENTATION -->
+<div class="accueil_2017_cadre nomobile">
+<h2>Présentation</h2>
+KarenOS est une application [[App native|native]] [[macOS]] qui permet de télécharger des [[modèle|modèles]] de langage au format [[GGUF]] depuis [[Hugging Face]] et d'interagir avec eux localement. L'inférence est confiée au moteur [[llama.cpp|llama-server]], lancé en sous-processus sur la [[adresse de boucle locale]] et exposant une [[interface de programmation]] compatible avec celle d'[[OpenAI]]. Une fois le modèle téléchargé, aucun prompt ni résultat ne quitte la machine.
+
+
+KarenOS est développée selon trois principes : la maîtrise des données, l'interopérabilité des interfaces (API compatible OpenAI, événements [[Server-Sent Events|SSE]]), et l'agrégation de compétences locales à travers des [[Agent intelligent|agents]] paramétrables.
+
+
+{| style="width:100%; padding-top:10px; margin-bottom:1.9rem;"
+|-
+| style="padding-bottom:7px" colspan="2"| Le projet compte :
+|- style="text-align:center"
+| style="width:50%; vertical-align:top;"| <span style="font-size:1.3rem; font-weight:bold">8</span><br/>modèles épinglés
+| style="width:50%"| <span style="font-size:1.3rem; font-weight:bold">2</span><br/>engines publiées (native macOS + image conteneur Linux)
+|}
+
+
+<!-- COMMENT CONTRIBUER ? -->
+<h2>Comment contribuer ?</h2>
+Chacun peut participer au développement en ligne, à condition de respecter les règles du dépôt : traçabilité des changements ([[pull request]]), admissibilité des propositions (les [[problème GitHub|issues]]) et attitude cordiale dans les échanges.
+
+
+De nombreuses ressources sont disponibles : [[guide de démarrage (KarenOS)|guide de démarrage]], [[documentation technique]] (API, architecture, sécurité) et [[wiki d'installation|wiki du projet]]. Pour signaler un problème, ouvrir un bug ou proposer une amélioration, les issues GitHub sont ouvertes et les discussions du dépôt centralisent les débats.
+
+
+Le journal des modifications tient lieu de forum de suivi des évolutions.
+
+
+<div class="liste-horizontale accueil_2017_pied">'''[[Ressources pour débuter (KarenOS)|Ressources pour débuter]]'''</div>
+</div>
+
+
+<!-- FONCTIONNALITÉS -->
+<div class="accueil_2017_cadre nomobile">
+<h2>Fonctionnalités clés</h2>
+{{#if:{{{inclusion pour protection|}}}||{| class="wikitable"
+|-
+! Fonctionnalité
+! Description
+|-
+| Chat local en streaming
+| Dialogue avec un modèle installé, affichage progressif des réponses.
+|-
+| Boutique de modèles
+| Catalogue GGUF (sélection épinglée) et recherche sur l'API Hugging Face, téléchargement avec progression.
+|-
+| Bibliothèque de modèles
+| Registre des modèles sur disque, lancement du chat.
+|-
+| Agents autonomes
+| Missions répétables : déclencheur (manuel, au lancement, à intervalle), boucle, conditions d'arrêt, journal d'exécution.
+|-
+| Multimodal
+| Pièces jointes (image, vidéo, audio, fichier), vision automatique (`*.mmproj`), dictée vocale locale.
+|-
+| Compétences
+| Consignes structurées (rôle, contexte, obligations de résultats) injectées dans le prompt système.
+|}
+}}
+</div>
+
+
+<!-- DIAGRAMME DU JOUR -->
+<div class="accueil_2017_cadre nomobile">
+<h2>Diagramme du jour</h2>
+{{#if:{{{inclusion pour protection|}}}||[[Fichier:karenos-sequence-inference.svg|vignette|centré|Diagramme de séquence : inférence en streaming (SSE) entre l'interface et llama-server.]]}}
+<div class="liste-horizontale accueil_2017_pied">
+* '''[[Diagrammes UML du projet (dossier)|Tous les diagrammes]]'''
+</div>
+</div>
+
+
+<!-- SOURCES -->
+<div class="accueil_2017_cadre nomobile">
+<h2>Sources et liens</h2>
+{{#if:{{{inclusion pour protection|}}}||* Dépôt officiel : <span class="plainlinks">[https://github.com/martialzinsou/KarenOs github.com/martialzinsou/KarenOs]</span>
+* Release 1.0.0 : <span class="plainlinks">[https://github.com/martialzinsou/KarenOs/releases/tag/v1.0.0 github.com/martialzinsou/KarenOs/releases]</span>
+* Image conteneur : <span class="plainlinks">[https://github.com/users/martialzinsou/packages/container/package/karenos%2Fkarenos-llama-server GitHub Container Registry]</span>
+}}
+<div class="liste-horizontale accueil_2017_pied">
+* '''[[#Sources et références|Références]]'''
+</div>
+</div>
+
+
+</div>
+</div>
+
+
+<!-- Projets liés -->
+<div class="accueil_2017_cadre">
+<h2>Projets liés</h2>
+* [[Llama.cpp]] — moteur d'inférence sous-jacent
+* [[Hugging Face]] — hébergeur des modèles GGUF
+* [[OpenAI]] — API compatible (format de chat)
+* [[SwiftUI]] — interface native
+</div>
+
+
+== Sources et références ==
+
+{{Références}}
+
+<!-- Catégories volontairement inactives en brouillon -->
+[[:Catégorie:Logiciel macOS]]
+[[:Catégorie:Intelligence artificielle]]
+
+__NOTOC__<!-- -->__NOEDITSECTION__
