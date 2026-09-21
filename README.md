@@ -7,9 +7,10 @@
 <!--
     SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
     Auteur   : Martial Zinsou
+    Fonction : Directeur des Systèmes d'Information (DSI / IT Director)
     Titre    : KarenOS
     Description : Application native macOS d'IA générative 100% locale : téléchargement de modèles GGUF depuis Hugging Face, chat en streaming avec llama.cpp, agents autonomes et multimodal (Swift / SwiftUI).
-    Mots-clés : karenos, ia locale, ia hors ligne, macos, swift, swiftui, llama.cpp, gguf, hugging face, agents ia autonomes, multimodal, chatbot local, martial zinsou
+    Mots-clés : karenos, ia locale, ia hors ligne, macos, swift, swiftui, llama.cpp, gguf, hugging face, agents ia autonomes, multimodal, chatbot local, martial zinsou, dsi, directeur informatique, it director, gouvernance it, transformation digitale, infrastructure ia
     Langue   : fr
 -->
 

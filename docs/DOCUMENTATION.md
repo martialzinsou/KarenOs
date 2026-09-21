@@ -3,9 +3,10 @@
 <!--
     SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
     Auteur   : Martial Zinsou
+    Fonction : Directeur des Systèmes d'Information (DSI / IT Director)
     Titre    : Documentation de KarenOS
     Description : Documentation complète de KarenOS, l'application macOS d'IA générative locale : installation, modèles, agents autonomes, multimodal, compétences, persistance et dépannage.
-    Mots-clés : karenos, documentation, ia locale, macos, swiftui, llama.cpp, agents ia, multimodal, installation, dépannage
+    Mots-clés : karenos, documentation, ia locale, macos, swiftui, llama.cpp, agents ia, multimodal, installation, dépannage, dsi, directeur informatique, it director, gouvernance it, transformation digitale, infrastructure ia
     Langue   : fr
 -->
 

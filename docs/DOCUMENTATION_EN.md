@@ -3,9 +3,10 @@
 <!--
     SEO — KarenOS · Project reference: https://github.com/martialzinsou/KarenOs
     Author   : Martial Zinsou
+    Role     : IT Director (DSI)
     Title    : KarenOS Documentation (US English)
     Description : Complete US English documentation of KarenOS, the native macOS app for 100% local generative AI: install, models, autonomous agents, multimodal, skills, persistence and troubleshooting.
-    Keywords : karenos, documentation, local ai, macos, swiftui, llama.cpp, ai agents, multimodal, guide
+    Keywords : karenos, documentation, local ai, macos, swiftui, llama.cpp, ai agents, multimodal, guide, dsi, it director, IT management, digital transformation, governance, AI infrastructure
     Language : en
 -->
 
