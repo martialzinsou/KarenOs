@@ -1,5 +1,16 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — HuggingFaceClient.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Client HTTP de l'API Hugging Face (recherche + fiches détaillées).
+//    Dépend. : Foundation
+//  --------------------------------------------------------------------
+//    Encapsule les requêtes GET /api/models : recherche de modèles GGUF
+//    triée par téléchargements, fiche détaillée (`blobs=true`) et liste des
+//    modèles pré-sélectionnés pour la Boutique (`curatedIDs`). Les erreurs
+//    sont normalisées via `HFError` (erreur HTTP ou de décodage).
+//  ====================================================================
 
 import Foundation
 
@@ -15,7 +26,12 @@ enum HFError: LocalizedError {
     }
 }
 
-enum HuggingFaceClient {
+/// Moteur de recherche et d'enrichissement des modèles Hugging Face.
+    ///
+    /// Toutes les requêtes passent par `getJSON` (délai de 30 s, erreurs
+    /// normalisées). Les identifiants de la sélection Boutique sont listés
+    /// dans `curatedIDs`.
+    enum HuggingFaceClient {
     static let api = URL(string: "https://huggingface.co/api/models")!
 
     private static func getJSON<T: Decodable>(_ url: URL) async throws -> T {

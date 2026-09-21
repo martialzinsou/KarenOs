@@ -1,9 +1,27 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — StoreDetailSheet.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Fiche détail d'un modèle de la Boutique : versions et installation.
+//    Dépend. : SwiftUI
+//  --------------------------------------------------------------------
+//    Présente les métadonnées du modèle (téléchargements, contexte, taille
+//    totale), la liste des fichiers GGUF avec sélection de la quantification,
+//    et le bouton Installer avec progression. Résout les détails manquants
+//    via l'API Hugging Face au besoin.
+//  ====================================================================
 
 import SwiftUI
 
-struct StoreDetailSheet: View {
+/// Fiche détaillée d'un modèle : statistiques, versions GGUF et installation.
+    ///
+    /// Ouverte depuis une `StoreCard`, elle présente les métadonnées, la
+    /// liste des fichiers de quantification (sélection de la version à
+    /// télécharger) et le bouton Installer avec progression. Elle complète
+    /// les données manquantes via l'API (`live`) si la carte n'était pas
+    /// résolue.
+    struct StoreDetailSheet: View {
     let model: RemoteModel
 
     @Environment(\.dismiss) private var dismiss

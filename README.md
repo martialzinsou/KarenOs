@@ -1,5 +1,15 @@
 # KarenOS
 
+<!--
+    SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
+    Auteur   : Martial Zinsou
+    Titre    : KarenOS
+    Description : Application native macOS d'IA générative 100% locale : téléchargement de modèles GGUF depuis Hugging Face, chat en streaming avec llama.cpp, agents autonomes et multimodal (Swift / SwiftUI).
+    Mots-clés : karenos, ia locale, ia hors ligne, macos, swift, swiftui, llama.cpp, gguf, hugging face, agents ia autonomes, multimodal, chatbot local, martial zinsou
+    Langue   : fr
+-->
+
+
 Application native macOS pour utiliser des modèles d'IA **en local** : téléchargement de modèles GGUF depuis Hugging Face, puis discussion avec eux, tout sur ta machine.
 
 **Auteur : Martial Zinsou**
@@ -31,7 +41,7 @@ Application native macOS pour utiliser des modèles d'IA **en local** : téléch
 - **Compétences** : consignes structurées (rôle, contexte, obligations de résultats) appliquées automatiquement quel que soit le modèle.
 - **Moteur local** : utilise `llama-server` (llama.cpp) téléchargé automatiquement et embarqué dans l'app. Aucune donnée ne quitte l'ordinateur.
 
-📘 **Documentation complète** — architecture, schémas d'inférence, flux des compétences, dépannage : [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) →
+📘 **Documentation complète** — architecture, schémas d'inférence, flux des compétences, dépannage : [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md) → &nbsp; **🇺🇸 English (US) :** [DOCUMENTATION_EN.md](docs/DOCUMENTATION_EN.md) →
 
 ## Pré-requis
 

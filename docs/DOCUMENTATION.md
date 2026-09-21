@@ -1,8 +1,20 @@
 # Documentation de KarenOS
 
+<!--
+    SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
+    Auteur   : Martial Zinsou
+    Titre    : Documentation de KarenOS
+    Description : Documentation complète de KarenOS, l'application macOS d'IA générative locale : installation, modèles, agents autonomes, multimodal, compétences, persistance et dépannage.
+    Mots-clés : karenos, documentation, ia locale, macos, swiftui, llama.cpp, agents ia, multimodal, installation, dépannage
+    Langue   : fr
+-->
+
+
 KarenOS est une application native macOS qui permet de **télécharger des modèles d'IA générative** depuis Hugging Face et de **discuter avec eux entièrement en local**. Elle embarque le moteur `llama-server` (llama.cpp) et n'envoie **aucune donnée sur internet** une fois le modèle chargé.
 
 > **Auteur : Martial Zinsou** — 100 % Swift / SwiftUI, sans Xcode (compilation `swiftc`).
+>
+> **🇺🇸 US English version:** [docs/DOCUMENTATION_EN.md](DOCUMENTATION_EN.md)
 
 ---
 

@@ -1,9 +1,26 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — Skills.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Modèles et stockage des compétences (consignes réutilisables).
+//    Dépend. : Foundation, SwiftUI
+//  --------------------------------------------------------------------
+//    Skill = rôle + contexte + obligations de résultats, combinés en un
+//    prompt système. Gère la compatibilité avec l'ancien champ `instructions`.
+//    SkillStore persiste les compétences et la compétence active dans
+//    skills.json et expose le CRUD (add/update/delete/setActive).
+//  ====================================================================
 
 import Foundation
 import SwiftUI
 
+/// Une compétence = consignes réutilisables injectées en prompt système.
+///
+/// Trois champs structurés (rôle / contexte / obligations de résultats)
+/// sont combinés par `systemPrompt` ; l'interface s'en sert aussi pour
+/// l'affichage. Le décodage accepte l'ancien champ `instructions` (migré
+/// vers `context` quand les trois champs sont vides).
 struct Skill: Identifiable, Codable, Hashable {
     var id: UUID
     var name: String
@@ -75,8 +92,10 @@ struct Skill: Identifiable, Codable, Hashable {
     }
 }
 
-@MainActor
-final class SkillStore: ObservableObject {
+/// Registre des compétences et de la compétence active du chat, persisté
+    /// dans `skills.json`.
+    @MainActor
+    final class SkillStore: ObservableObject {
     @Published private(set) var skills: [Skill] = []
     @Published var activeSkillID: UUID?
 

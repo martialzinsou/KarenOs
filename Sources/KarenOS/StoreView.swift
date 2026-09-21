@@ -1,9 +1,26 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — StoreView.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Onglet « Boutique » : sélection de modèles et recherche Hugging Face.
+//    Dépend. : SwiftUI
+//  --------------------------------------------------------------------
+//    Affiche la sélection (curatedIDs) et les résultats de recherche (délai
+//    anti-rebond de 450 ms). Les StoreCard enrichissent les fiches (contexte,
+//    taille, quantifications), détectent l'installation et lancent le
+//    téléchargement, et ouvrent la fiche détail (StoreDetailSheet).
+//  ====================================================================
 
 import SwiftUI
 
-struct StoreView: View {
+/// Onglet « Boutique » : sélection de modèles et recherche Hugging Face.
+    ///
+    /// Charge la sélection (`curatedIDs`) en arrière-plan, enrichit chaque
+    /// fiche via l'API et gère la recherche avec délai anti-rebond de 450 ms.
+    /// Les cartes filtrent les modèles gated ou sans fichier GGUF et ouvrent
+    /// la fiche détail (`.sheet`).
+    struct StoreView: View {
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
 
@@ -178,7 +195,12 @@ private struct MessageBar: View {
     }
 }
 
-struct StoreCard: View {
+/// Carte d'un modèle dans la grille de la Boutique.
+    ///
+    /// Affiche contexte, auteur, licences, taille estimée et l'état
+    /// (Installé / progression / Installer). Résout les détails absents via
+    /// l'API (`live`) et déclenche le téléchargement de la version par défaut.
+    struct StoreCard: View {
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
     let model: RemoteModel

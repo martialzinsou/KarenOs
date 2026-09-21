@@ -1,8 +1,20 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — DownloadManager.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Téléchargement fiable de fichiers avec progression et reprises.
+//    Dépend. : Foundation
+//  --------------------------------------------------------------------
+//    Télécharge une ressource vers une destination avec 3 tentatives et
+//    2 s d'attente entre les échecs. Reprend le fichier déjà partiellement
+//    présent. DownloadDelegate rapporte la progression via URLSessionDownload-
+//    Delegate. Valide le code HTTP puis déplace le fichier temporaire.
+//  ====================================================================
 
 import Foundation
 
+/// Délègue `URLSession` pour rapporter la progression d'un téléchargement.
 final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     var progress: ((Double) -> Void)?
 
@@ -16,7 +28,15 @@ final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     }
 }
 
-enum DownloadManager {
+/// Outils de téléchargement : reprise si le fichier existe, 3 tentatives,
+    /// contrôle du code HTTP et déplacement du fichier temporaire.
+    enum DownloadManager {
+    /// Télécharge `url` vers `destination` (celles-ci absolues).
+    ///
+    /// - Parameters:
+    ///   - url: ressource distante.
+    ///   - destination: fichier local de sortie.
+    ///   - progress: rappel (0...1) appelé sur n'importe quel thread ; vide = sans suivi.
     static func download(url: URL, to destination: URL, progress: ((Double) -> Void)? = nil) async throws {
         let fm = FileManager.default
         if fm.fileExists(atPath: destination.path),

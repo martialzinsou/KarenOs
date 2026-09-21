@@ -1,9 +1,25 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — SkillsView.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Onglet « Compétences » : liste, détail et édition des compétences.
+//    Dépend. : SwiftUI
+//  --------------------------------------------------------------------
+//    NavigationSplitView des compétences (SkillStore) : liste avec état
+//    actif, détail (rôle / contexte / obligations + aperçu du prompt
+//    système), activation dans le chat et éditeur. SkillEditorSheet propose
+//    des modèles prêts à l'emploi (Traducteur, Correcteur de code...).
+//  ====================================================================
 
 import SwiftUI
 
-struct SkillsView: View {
+/// Onglet « Compétences » : liste et détail des compétences réutilisables.
+    ///
+    /// Alimenté par `SkillStore`. Le détail montre rôle / contexte /
+    /// obligations + aperçu du prompt système, avec activation directe dans
+    /// le chat. La feuille `SkillEditorSheet` crée/édite une compétence.
+    struct SkillsView: View {
     @EnvironmentObject private var skillStore: SkillStore
 
     @State private var selection: Skill.ID?
@@ -77,7 +93,8 @@ struct SkillsView: View {
     }
 }
 
-struct SkillRow: View {
+/// Ligne de liste d'une compétence (icône, nom, extrait du prompt, active).
+    struct SkillRow: View {
     let skill: Skill
     let isActive: Bool
 
@@ -109,7 +126,11 @@ struct SkillRow: View {
     }
 }
 
-struct SkillDetail: View {
+/// Fiche détaillée d'une compétence : sections et aperçu du prompt.
+    ///
+    /// Propose l'activation/désactivation dans le chat (compétence unique
+    /// active), l'édition et la suppression.
+    struct SkillDetail: View {
     let skill: Skill
     let isActive: Bool
     let onAction: (Action) -> Void
@@ -219,7 +240,12 @@ struct SkillDetail: View {
     }
 }
 
-struct SkillEditorSheet: View {
+/// Éditeur de compétence (rôle / contexte / obligations) avec modèles.
+    ///
+    /// `templates` propose des exemples prêts à l'emploi (Traducteur,
+    /// Correcteur de code…) appliqués via `apply(_:)`. Le mode `.edit` est
+    /// pré-rempli au premier rendu.
+    struct SkillEditorSheet: View {
     enum Mode: Identifiable, Equatable {
         case create
         case edit(Skill)

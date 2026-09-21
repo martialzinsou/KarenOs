@@ -1,15 +1,35 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — ChatView.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Interface de discussion avec un modèle (chat + multimodal).
+//    Dépend. : SwiftUI
+//  --------------------------------------------------------------------
+//    Charge le modèle à l'apparition, pilote les phases, maintient
+//    l'historique en streaming, offre le menu de compétences, le statut et
+//    la barre d'entrée : trombone (pièces jointes), micro (dictée), champ
+//    texte, bouton envoyer/arrêter. MessageBubble, AttachmentThumb,
+//    AttachmentChip et ModelMissingView sont les vues auxiliaires.
+//  ====================================================================
 
 import SwiftUI
 
-struct ChatView: View {
+/// Fenêtre de discussion avec un modèle : historique, streaming et entrées
+    /// multimodal (pièces jointes + dictée vocale).
+    ///
+    /// Déroulé du cycle de vie : vérification de la présence du fichier
+    /// (`modelMissing`), chargement (`start`), affichage des phases, puis
+    /// état `.loaded` où la barre d'entrée est active. La génération remplit
+    /// le message assistant bulle par bulle via `ChatService.streamReply`.
+    struct ChatView: View {
     let model: LocalModel
 
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
     @EnvironmentObject private var skillStore: SkillStore
 
+    /// Phase de chargement d'un modèle, observée par l'interface du chat.
     enum Phase: Equatable {
         case loading
         case loaded
@@ -218,8 +238,27 @@ struct ChatView: View {
         .padding(.top, 60)
     }
 
+    private var visionWarning: String? {
+        guard !engine.hasVision,
+              pendingFiles.contains(where: { $0.kind == .image })
+              || messages.contains(where: { $0.role == "user" && $0.attachments.contains(where: { $0.kind == .image }) })
+        else { return nil }
+        return "Le modèle actif ne supporte pas les images : elles sont affichées mais ne seront pas analysées. Utilise un modèle vision (fichier .mmproj) pour l'analyse d'images."
+    }
+
     private var inputBar: some View {
         VStack(spacing: 8) {
+            if let warning = visionWarning {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(warning)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.horizontal, 4)
+            }
             if !pendingFiles.isEmpty {
                 pendingFilesRow
             }

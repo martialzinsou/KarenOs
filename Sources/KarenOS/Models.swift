@@ -1,8 +1,26 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — Models.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Modèle de données des modèles d'IA distants (catalogue Hugging Face).
+//    Dépend. : Foundation
+//  --------------------------------------------------------------------
+//    RemoteModel représente un modèle vu par l'API Hugging Face : licence,
+//    downloads, likes, fichiers GGUF et contexte. Les structures Flexibles
+//    (FlexibleString, GatedValue) tolèrent les réponses hétérogènes de l'API
+//    (chaîne OU tableau). Déduit l'auteur, la quantification par défaut
+//    (Q4_K_M...) et l'URL de téléchargement direct via `downloadURL(for:)`.
+//  ====================================================================
 
 import Foundation
 
+/// Un modèle distant vu par l'API Hugging Face.
+///
+/// Les champs typés (licence, gated) utilisent des conteneurs flexibles
+/// pour tolérer l'hétérogénéité des réponses de l'API. Les propriétés
+/// calculées préparent l'affichage et le téléchargement : nom lisible,
+/// auteur, taille totale des GGUF, contexte, quantification par défaut.
 struct RemoteModel: Identifiable, Hashable, Codable {
     let id: String
     var downloads: Int?

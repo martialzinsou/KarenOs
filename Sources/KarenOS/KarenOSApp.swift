@@ -1,9 +1,26 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — KarenOSApp.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Racine de l'application : stores, fenêtre, onglets et fin de vie.
+//    Dépend. : SwiftUI, AppKit
+//  --------------------------------------------------------------------
+//    KarenOSApp assemble les cinq Stores (modèles, moteur, compétences,
+//    agents, runner) en environmentObject. ContentView expose les 4 onglets :
+//    Mes modèles, Boutique, Agents, Compétences, plus le badge d'état moteur.
+//    Au démarrage : installation du moteur + lancement des agents « au
+//    lancement » ; à la fermeture : arrêt du runner et du moteur.
+//  ====================================================================
 
 import SwiftUI
 import AppKit
 
+/// Racine de l'application.
+///
+/// Construit les shares Stores et les injecte dans l'environnement SwiftUI.
+/// Le cycle de vie des Stores (agents, runner, moteur) est rattaché à celui
+/// de cette `App`.
 @main
 struct KarenOSApp: App {
     @StateObject private var store = ModelStore()
@@ -26,6 +43,12 @@ struct KarenOSApp: App {
     }
 }
 
+/// Le `TabView` central : les 4 volets de l'application.
+///
+/// `KARENOS_TAB` (variable d'environnement, outillage de capture) permet de
+/// forcer l'onglet initial ; le moteur est installé au démarrage et les
+/// agents « au lancement » sont déclenchés. À la fermeture de l'app, le
+/// runner et le moteur sont arrêtés proprement.
 struct ContentView: View {
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
@@ -71,7 +94,8 @@ struct ContentView: View {
     }
 }
 
-struct EngineStatusBadge: View {
+/// Badge global de la barre d'outils : état du moteur et du modèle actif.
+    struct EngineStatusBadge: View {
     @ObservedObject var engine: EngineManager
 
     var body: some View {

@@ -1,8 +1,25 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — AppPaths.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Chemins du système et fichiers supports de KarenOS.
+//    Dépend. : Foundation
+//  --------------------------------------------------------------------
+//    Centralise l'emplacement Application Support de l'app
+//    (~/Library/Application Support/KarenOS/) et les URLs des fichiers
+//    d'état (models.json, skills.json, agents.json, server.log).
+//    `ensure()` crée les dossiers au démarrage. Fournit aussi FileFormat.bytes
+//    pour l'affichage lisible des tailles de fichiers.
+//  ====================================================================
 
 import Foundation
 
+/// Chemins d'accès centraux de KarenOS.
+///
+/// Le dossier Application Support (`~/Library/Application Support/KarenOS/`)
+/// contient les modèles, le moteur et les fichiers d'état du programme.
+/// `ensure()` est appelé au démarrage des stores.
 enum AppPaths {
     static let support: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

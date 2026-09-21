@@ -1,9 +1,27 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — ModelStore.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Registre des modèles installés en local (téléchargement + persistance).
+//    Dépend. : Foundation, SwiftUI
+//  --------------------------------------------------------------------
+//    ModelStore (ObservableObject, @MainActor) expose les modèles installés,
+//    la progression et les erreurs de téléchargement, et persiste tout dans
+//    models.json. `download(_:file:)` passe par DownloadManager puis met à
+//    jour le registre. LocalModel décrit un modèle installé : quantification,
+//    taille, emplacement sur le disque et libellés lisibles.
+//  ====================================================================
 
 import Foundation
 import SwiftUI
 
+/// Registre des modèles installés et des téléchargements en cours.
+///
+/// Persiste une liste dédupliquée de `LocalModel` dans `models.json`.
+/// `download(_:file:)` est la seule porte d'entrée du téléchargement :
+/// il vérifie les doublons, crée le dossier du modèle, appelle
+/// `DownloadManager` (progression publiée) puis met à jour le registre.
 @MainActor
 final class ModelStore: ObservableObject {
     @Published var installed: [LocalModel] = []
@@ -93,6 +111,11 @@ final class ModelStore: ObservableObject {
     }
 }
 
+/// Un modèle installé sur le disque.
+///
+/// Le sous-dossier `Models/<author>__<name>/` contient le fichier GGUF.
+/// `existsOnDisk` distingue un enregistrement orphelin d'un modèle réellement
+/// téléchargé (un modèle supprimé du disque manuellement reste listé).
 struct LocalModel: Identifiable, Codable, Equatable {
     let id: String
     let displayName: String

@@ -1,8 +1,25 @@
-//  KarenOS
-//  Par Martial Zinsou
+//  ====================================================================
+//    KarenOS — LibraryView.swift
+//    Application macOS d'IA en local · 100 % Swift/SwiftUI · llama.cpp
+//  --------------------------------------------------------------------
+//    Auteur  : Martial Zinsou
+//    Rôle    : Onglet « Mes modèles » : liste des modèles installés et chat.
+//    Dépend. : SwiftUI
+//  --------------------------------------------------------------------
+//    NavigationSplitView : liste des modèles installés à gauche (modèle
+//    actif mis en évidence), ChatView à droite pour le modèle sélectionné.
+//    Placeholder si aucun modèle, suppression contextuelle qui arrête le
+//    moteur lorsque le modèle supprimé était actif.
+//  ====================================================================
 
 import SwiftUI
 
+/// Onglet « Mes modèles » : bibliothèque des modèles installés + chat.
+///
+/// La liste affiche chaque `LocalModel` (avec indicateur du modèle actif)
+/// et un menu contextuel de suppression ; le détail est le `ChatView` du
+/// modèle sélectionné. `KARENOS_OPEN_FIRST_MODEL=1` auto-sélectionne le
+/// premier modèle (outillage de capture d'écran).
 struct LibraryView: View {
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
@@ -62,7 +79,8 @@ struct LibraryView: View {
     }
 }
 
-struct LibraryRow: View {
+/// Ligne de liste d'un modèle installé (icône, nom, auteur/taille, actif).
+    struct LibraryRow: View {
     let model: LocalModel
     let isActive: Bool
 
