@@ -18,35 +18,6 @@
     twitter:card : summary_large_image
 -->
 
-<!-- JSON-LD Structured Data for Article -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": "KarenOS — Page encyclopédique (style Wikipédia)",
-  "description": "Présentation détaillée de KarenOS : application macOS d'IA générative 100% locale avec agents autonomes et multimodal",
-  "author": {
-    "@type": "Person",
-    "name": "Martial Zinsou",
-    "url": "https://github.com/martialzinsou"
-  },
-  "publisher": {
-    "@type": "Person",
-    "name": "Martial Zinsou"
-  },
-  "datePublished": "2026-09-21",
-  "dateModified": "2026-09-21",
-  "inLanguage": "fr",
-  "keywords": "karenos, ia locale, macos, swiftui, llama.cpp, agents ia, multimodal, gguf, dsi",
-  "about": {
-    "@type": "SoftwareApplication",
-    "name": "KarenOS",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "macOS 13+"
-  }
-}
-</script>
-
 # KarenOS
 
 | | |

@@ -20,39 +20,6 @@
     twitter:card : summary_large_image
 -->
 
-<!-- JSON-LD Structured Data for TechArticle -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "TechArticle",
-  "headline": "KarenOS Documentation (US English)",
-  "description": "Complete US English documentation of KarenOS, the native macOS app for 100% local generative AI",
-  "author": {
-    "@type": "Person",
-    "name": "Martial Zinsou",
-    "url": "https://github.com/martialzinsou"
-  },
-  "publisher": {
-    "@type": "Person",
-    "name": "Martial Zinsou"
-  },
-  "datePublished": "2026-09-21",
-  "dateModified": "2026-09-21",
-  "inLanguage": "en",
-  "keywords": "karenos, documentation, local ai, macos, swiftui, llama.cpp, ai agents, multimodal",
-  "about": {
-    "@type": "SoftwareApplication",
-    "name": "KarenOS",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "macOS 13+"
-  },
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://github.com/martialzinsou/KarenOs/blob/main/docs/DOCUMENTATION_EN.md"
-  }
-}
-</script>
-
 
 KarenOS is a native macOS application that **downloads generative AI models** from Hugging Face and lets you **chat with them fully offline**. It embeds the `llama-server` engine (llama.cpp) and sends **no data over the internet** once a model is loaded.
 

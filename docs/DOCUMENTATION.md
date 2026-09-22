@@ -18,39 +18,6 @@
     twitter:card : summary_large_image
 -->
 
-<!-- JSON-LD Structured Data for TechArticle -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "TechArticle",
-  "headline": "Documentation complète de KarenOS",
-  "description": "Documentation technique de KarenOS, application macOS d'IA générative 100% locale",
-  "author": {
-    "@type": "Person",
-    "name": "Martial Zinsou",
-    "url": "https://github.com/martialzinsou"
-  },
-  "publisher": {
-    "@type": "Person",
-    "name": "Martial Zinsou"
-  },
-  "datePublished": "2026-09-21",
-  "dateModified": "2026-09-21",
-  "inLanguage": "fr",
-  "keywords": "karenos, documentation, ia locale, macos, swiftui, llama.cpp, agents ia, multimodal",
-  "about": {
-    "@type": "SoftwareApplication",
-    "name": "KarenOS",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "macOS 13+"
-  },
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://github.com/martialzinsou/KarenOs/blob/main/docs/DOCUMENTATION.md"
-  }
-}
-</script>
-
 
 KarenOS est une application native macOS qui permet de **télécharger des modèles d'IA générative** depuis Hugging Face et de **discuter avec eux entièrement en local**. Elle embarque le moteur `llama-server` (llama.cpp) et n'envoie **aucune donnée sur internet** une fois le modèle chargé.
 

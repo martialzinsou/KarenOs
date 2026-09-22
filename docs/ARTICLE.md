@@ -22,40 +22,6 @@
     twitter:card : summary_large_image
 -->
 
-<!-- JSON-LD Structured Data for Article with Interview -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": "KarenOS — l'IA générative locale conçue pour le bureau",
-  "description": "Article technique et documentaire sur KarenOS avec interview de Martial Zinsou, créateur du projet",
-  "author": {
-    "@type": "Person",
-    "name": "Martial Zinsou",
-    "url": "https://github.com/martialzinsou"
-  },
-  "publisher": {
-    "@type": "Person",
-    "name": "Martial Zinsou"
-  },
-  "datePublished": "2026-09-21",
-  "dateModified": "2026-09-21",
-  "inLanguage": "fr",
-  "keywords": "karenos, ia locale, macos, swift, swiftui, llama.cpp, agents ia, multimodal, interview, martial zinsou, dsi",
-  "about": {
-    "@type": "SoftwareApplication",
-    "name": "KarenOS",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "macOS 13+"
-  },
-  "hasPart": {
-    "@type": "Article",
-    "headline": "Interview de Martial Zinsou, créateur de KarenOS",
-    "description": "Interview fictive mais fidèle du créateur de KarenOS sur les choix techniques, la philosophie locale, les agents, la vision DSI"
-  }
-}
-</script>
-
 ## 1. Introduction
 
 KarenOS est une application native pour **macOS** pensée comme une station d'**IA générative hors ligne**. L'utilisateur télécharge un modèle de langage au format **GGUF** depuis **Hugging Face**, puis dialogue avec lui localement : aucun prompt, aucune réponse, aucun fichier joint ne quitte la machine une fois le modèle chargé.
