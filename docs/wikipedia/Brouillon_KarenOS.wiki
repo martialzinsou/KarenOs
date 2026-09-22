@@ -3,6 +3,13 @@
     ============================================================
     BROUILLON POUR FR.WIKIPEDIA.ORG — KarenOS
     ============================================================
+    SEO Metadata (for external indexing before Wikipedia submission):
+    Canonical : https://github.com/martialzinsou/KarenOs/blob/main/docs/wikipedia/Brouillon_KarenOS.wiki
+    Title     : KarenOS — Brouillon Wikipédia (fr)
+    Description : Brouillon d'article encyclopédique pour KarenOS, application macOS d'IA générative 100% locale. Partie documentaire, technique (7 diagrammes UML), infobox, notoriété.
+    Keywords  : karenos, ia locale, macos, swiftui, llama.cpp, agents ia, multimodal, gguf, wikipedia, dsi
+    Language  : fr
+    ============================================================
     Usage :
       1. Connecte-toi sur fr.wikipedia.org (compte « directionDSI »).
       2. Ouvre https://fr.wikipedia.org/wiki/Utilisateur:directionDSI/KarenOS

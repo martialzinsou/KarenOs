@@ -2,6 +2,24 @@
 
 **Auteur : Martial Zinsou**
 
+<!--
+    SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
+    Canonical : https://github.com/martialzinsou/KarenOs/blob/main/Packaging/container/README.md
+    Auteur   : Martial Zinsou
+    Fonction : Directeur des Systèmes d'Information (DSI / IT Director)
+    Titre    : KarenOS llama-server — Image conteneur Linux x86_64 pour DSI
+    Description : Image Docker du moteur d'inférence llama-server (llama.cpp) compilée pour Linux x86_64 AVX2. Déploiement intranet, souveraineté données, compatible API OpenAI. Publiée automatiquement sur GHCR.
+    Mots-clés : karenos, docker, container, llama.cpp, llama-server, linux, x86_64, avx2, ghcr, dsi, infrastructure ia, ia locale
+    Langue   : fr
+    robots   : index, follow
+    og:title : KarenOS llama-server — Image conteneur pour serveurs DSI
+    og:description : Déployez le moteur d'inférence KarenOS en intranet avec Docker. API compatible OpenAI.
+    og:type : article
+    og:url : https://github.com/martialzinsou/KarenOs/blob/main/Packaging/container/README.md
+    og:image : https://raw.githubusercontent.com/martialzinsou/KarenOs/main/docs/branding/karenos-logo.png
+    twitter:card : summary_large_image
+-->
+
 Le composant portable de KarenOS : le **moteur d'inférence** `llama-server`
 (llama.cpp), compilé pour **Linux x86_64 (AVX2)**. Il permet de faire tourner
 l'IA générative de KarenOS sur un serveur de l'infrastructure (intranet,

@@ -2,13 +2,50 @@
 
 <!--
     SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
+    Canonical : https://github.com/martialzinsou/KarenOs/blob/main/docs/WIKIPEDIA.md
     Auteur   : Martial Zinsou
     Fonction : Directeur des Systèmes d'Information (DSI / IT Director)
-    Titre    : KarenOS — page encyclopédique (style Wikipédia)
-    Description : Page de présentation détaillée de KarenOS : application macOS d'IA générative 100 % locale — partie documentaire, architecture et spécifications techniques avec diagrammes UML.
+    Titre    : KarenOS — Page encyclopédique (style Wikipédia)
+    Description : Page de présentation détaillée de KarenOS : application macOS d'IA générative 100 % locale — partie documentaire, architecture et spécifications techniques avec diagrammes UML. Pour DSI, IT Directors, décideurs IT.
     Mots-clés : karenos, ia locale, macos, swiftui, llama.cpp, agents ia, multimodal, gguf, huggingface, dsi, directeur informatique, it director, gouvernance it, transformation digitale, infrastructure ia
     Langue   : fr
+    robots   : index, follow
+    og:title : KarenOS — Page encyclopédique (Wikipédia style)
+    og:description : Architecture, spécifications techniques et diagrammes UML de KarenOS, l'IA générative locale pour macOS.
+    og:type : article
+    og:url : https://github.com/martialzinsou/KarenOs/blob/main/docs/WIKIPEDIA.md
+    og:image : https://raw.githubusercontent.com/martialzinsou/KarenOs/main/docs/branding/karenos-logo.png
+    twitter:card : summary_large_image
 -->
+
+<!-- JSON-LD Structured Data for Article -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "KarenOS — Page encyclopédique (style Wikipédia)",
+  "description": "Présentation détaillée de KarenOS : application macOS d'IA générative 100% locale avec agents autonomes et multimodal",
+  "author": {
+    "@type": "Person",
+    "name": "Martial Zinsou",
+    "url": "https://github.com/martialzinsou"
+  },
+  "publisher": {
+    "@type": "Person",
+    "name": "Martial Zinsou"
+  },
+  "datePublished": "2026-09-21",
+  "dateModified": "2026-09-21",
+  "inLanguage": "fr",
+  "keywords": "karenos, ia locale, macos, swiftui, llama.cpp, agents ia, multimodal, gguf, dsi",
+  "about": {
+    "@type": "SoftwareApplication",
+    "name": "KarenOS",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "macOS 13+"
+  }
+}
+</script>
 
 # KarenOS
 

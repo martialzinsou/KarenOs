@@ -1,4 +1,6 @@
 # Auteur : Martial Zinsou
+# description: Build & push l'image conteneur KarenOS llama-server (Linux x86_64 AVX2) vers GHCR à chaque tag v*
+# keywords: docker, container, ghcr, llama.cpp, llama-server, linux, x86_64, avx2, karenos, ci-cd
 name: Container (GHCR)
 
 on:

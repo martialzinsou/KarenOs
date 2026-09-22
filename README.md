@@ -1,18 +1,61 @@
 # KarenOS
 
 <p align="center">
-  <img src="docs/branding/karenos-logo.svg" alt="Logo KarenOS — Noyau local" width="220"/>
+  <img src="docs/branding/karenos-logo.svg" alt="Logo KarenOS — Application macOS d'IA générative 100% locale" width="220"/>
 </p>
 
 <!--
     SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
+    Canonical : https://github.com/martialzinsou/KarenOs
     Auteur   : Martial Zinsou
     Fonction : Directeur des Systèmes d'Information (DSI / IT Director)
-    Titre    : KarenOS
-    Description : Application native macOS d'IA générative 100% locale : téléchargement de modèles GGUF depuis Hugging Face, chat en streaming avec llama.cpp, agents autonomes et multimodal (Swift / SwiftUI).
-    Mots-clés : karenos, ia locale, ia hors ligne, macos, swift, swiftui, llama.cpp, gguf, hugging face, agents ia autonomes, multimodal, chatbot local, martial zinsou, dsi, directeur informatique, it director, gouvernance it, transformation digitale, infrastructure ia
+    Titre    : KarenOS — Application native macOS d'IA générative 100% locale
+    Description : KarenOS est une application macOS native permettant de télécharger des modèles GGUF depuis Hugging Face et de discuter avec eux entièrement en local. Chat en streaming via llama.cpp, agents autonomes, multimodal (images, vidéo, audio, dictée vocale), compétences réutilisables. Aucune donnée ne quitte la machine. Idéal pour DSI, IT Directors, gouvernance IT, infrastructure IA souveraine.
+    Mots-clés : karenos, ia locale, ia hors ligne, macos, swift, swiftui, llama.cpp, gguf, hugging face, agents ia autonomes, multimodal, chatbot local, martial zinsou, dsi, directeur informatique, it director, gouvernance it, transformation digitale, infrastructure ia, ia souveraine, llm local, generative ai local
     Langue   : fr
+    robots   : index, follow
+    og:title : KarenOS — IA générative 100% locale pour macOS
+    og:description : Téléchargez des modèles GGUF depuis Hugging Face et discutez avec eux entièrement en local. Agents autonomes, multimodal, compétences, zéro donnée sortante.
+    og:type : website
+    og:url : https://github.com/martialzinsou/KarenOs
+    og:image : https://raw.githubusercontent.com/martialzinsou/KarenOs/main/docs/branding/karenos-logo.png
+    twitter:card : summary_large_image
+    twitter:title : KarenOS — IA locale macOS
+    twitter:description : Application native macOS d'IA générative 100% locale avec agents autonomes et multimodal.
 -->
+
+<!-- JSON-LD Structured Data for SoftwareApplication -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "KarenOS",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "macOS 13+",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR",
+    "availability": "https://schema.org/InStock"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Martial Zinsou",
+    "url": "https://github.com/martialzinsou"
+  },
+  "description": "Application native macOS d'IA générative 100% locale : téléchargement de modèles GGUF, chat streaming, agents autonomes, multimodal, compétences.",
+  "keywords": "karenos, ia locale, macos, swift, swiftui, llama.cpp, gguf, agents ia, multimodal, dsi, it director",
+  "license": "https://opensource.org/licenses/MIT",
+  "url": "https://github.com/martialzinsou/KarenOs",
+  "downloadUrl": "https://github.com/martialzinsou/KarenOs/releases/tag/v1.0.0",
+  "version": "1.0.0",
+  "datePublished": "2026-09-21",
+  "publisher": {
+    "@type": "Person",
+    "name": "Martial Zinsou"
+  }
+}
+</script>
 
 
 Application native macOS pour utiliser des modèles d'IA **en local** : téléchargement de modèles GGUF depuis Hugging Face, puis discussion avec eux, tout sur ta machine.

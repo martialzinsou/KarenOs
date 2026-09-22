@@ -4,7 +4,57 @@
 
 **Auteur : Martial Zinsou**
 
----
+<!--
+    SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
+    Canonical : https://github.com/martialzinsou/KarenOs/blob/main/docs/ARTICLE.md
+    Auteur   : Martial Zinsou
+    Fonction : Directeur des Systèmes d'Information (DSI / IT Director)
+    Titre    : KarenOS — Article technique et documentaire avec interview du créateur
+    Description : Article technique complet sur KarenOS : architecture, cycle de vie moteur, agents autonomes, multimodal, compétences, sécurité, distribution, modèles recommandés. Termine par une interview de Martial Zinsou, créateur du projet.
+    Mots-clés : karenos, ia locale, macos, swift, swiftui, llama.cpp, agents ia, multimodal, interview, martial zinsou, dsi, it director, gouvernance it, ia souveraine
+    Langue   : fr
+    robots   : index, follow
+    og:title : KarenOS — Article technique et interview du créateur
+    og:description : Architecture, agents, multimodal, sécurité, distribution — et l'interview de Martial Zinsou.
+    og:type : article
+    og:url : https://github.com/martialzinsou/KarenOs/blob/main/docs/ARTICLE.md
+    og:image : https://raw.githubusercontent.com/martialzinsou/KarenOs/main/docs/branding/karenos-logo.png
+    twitter:card : summary_large_image
+-->
+
+<!-- JSON-LD Structured Data for Article with Interview -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "KarenOS — l'IA générative locale conçue pour le bureau",
+  "description": "Article technique et documentaire sur KarenOS avec interview de Martial Zinsou, créateur du projet",
+  "author": {
+    "@type": "Person",
+    "name": "Martial Zinsou",
+    "url": "https://github.com/martialzinsou"
+  },
+  "publisher": {
+    "@type": "Person",
+    "name": "Martial Zinsou"
+  },
+  "datePublished": "2026-09-21",
+  "dateModified": "2026-09-21",
+  "inLanguage": "fr",
+  "keywords": "karenos, ia locale, macos, swift, swiftui, llama.cpp, agents ia, multimodal, interview, martial zinsou, dsi",
+  "about": {
+    "@type": "SoftwareApplication",
+    "name": "KarenOS",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "macOS 13+"
+  },
+  "hasPart": {
+    "@type": "Article",
+    "headline": "Interview de Martial Zinsou, créateur de KarenOS",
+    "description": "Interview fictive mais fidèle du créateur de KarenOS sur les choix techniques, la philosophie locale, les agents, la vision DSI"
+  }
+}
+</script>
 
 ## 1. Introduction
 

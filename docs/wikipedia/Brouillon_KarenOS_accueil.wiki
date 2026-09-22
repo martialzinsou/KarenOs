@@ -3,14 +3,21 @@
     ============================================================================
     BROUILLON KARENOS — STRUCTURE "ACCUEIL 2017" (fr.wikipedia)
     ============================================================================
-Ce fichier reproduit la syntaxe de la page d'accueil de Wikipédia en français
-(structure « accueil_2017 ») : bandeau titre, div#accueil_2017_contenu,
-portail-gauche / portail-droite, cadres accueil_2017_cadre, liste-horizontale,
-{{#if:{{{inclusion pour protection|}}}||…}}, {| class="wikitable"|},
-__NOTOC__ et __NOEDITSECTION__.
-Le bandeau {{Accueil/Titre}} et les références vers l'espace « Wikipédia:… »
-ont été remplacés par des équivalents adaptés au brouillon du projet KarenOS
-(dépôt GitHub, wiki, releases, issues).
+    SEO Metadata (for external indexing before Wikipedia submission):
+    Canonical : https://github.com/martialzinsou/KarenOs/blob/main/docs/wikipedia/Brouillon_KarenOS_accueil.wiki
+    Title     : KarenOS — Brouillon Wikipédia style Accueil (fr)
+    Description : Brouillon d'article au format page d'accueil Wikipédia (accueil_2017) pour KarenOS. Portails gauche/droite, cadres, liste horizontale, infobox, diagrammes.
+    Keywords  : karenos, ia locale, macos, wikipedia, accueil, dsi, it director
+    Language  : fr
+    ============================================================================
+    Ce fichier reproduit la syntaxe de la page d'accueil de Wikipédia en français
+    (structure « accueil_2017 ») : bandeau titre, div#accueil_2017_contenu,
+    portail-gauche / portail-droite, cadres accueil_2017_cadre, liste-horizontale,
+    {{#if:{{{inclusion pour protection|}}}||…}}, {| class="wikitable"|},
+    __NOTOC__ et __NOEDITSECTION__.
+    Le bandeau {{Accueil/Titre}} et les références vers l'espace « Wikipédia:… »
+    ont été remplacés par des équivalents adaptés au brouillon du projet KarenOS
+    (dépôt GitHub, wiki, releases, issues).
     NB : les classes CSS .accueil_2017_* sont définies pour la page d'accueil ;
     sur une sous-page utilisateur leur rendu peut être partiel (syntaxe fidèle
     conservée). Avant soumission : ajouter des sources secondaires indépendantes.

@@ -2,6 +2,24 @@
 
 **Auteur : Martial Zinsou**
 
+<!--
+    SEO — KarenOS · Référence projet : https://github.com/martialzinsou/KarenOs
+    Canonical : https://github.com/martialzinsou/KarenOs/blob/main/docs/wikipedia/diagrammes/README.md
+    Auteur   : Martial Zinsou
+    Fonction : Directeur des Systèmes d'Information (DSI / IT Director)
+    Titre    : Diagrammes UML KarenOS — Import Wikimedia Commons
+    Description : 8 diagrammes UML (SVG) de KarenOS générés via Mermaid/Kroki : composants/déploiement, cas d'utilisation, classes, séquences inférence/chargement, machines à états moteur/agent, activité agent. Pour import sur Wikimedia Commons.
+    Mots-clés : karenos, uml, diagrammes, svg, wikimedia commons, mermaid, kroki, architecture, dsi
+    Langue   : fr
+    robots   : index, follow
+    og:title : Diagrammes UML KarenOS pour Wikimedia Commons
+    og:description : 8 diagrammes UML (classes, séquences, états, activité) prêts pour import Commons.
+    og:type : article
+    og:url : https://github.com/martialzinsou/KarenOs/blob/main/docs/wikipedia/diagrammes/README.md
+    og:image : https://raw.githubusercontent.com/martialzinsou/KarenOs/main/docs/branding/karenos-logo.png
+    twitter:card : summary_large_image
+-->
+
 Ces 8 SVG sont générés depuis les sources [Mermaid](../../WIKIPEDIA.md) du projet
 (sections techniques). Ils sont destinés à être **téléversés sur Wikimedia Commons**
 puis référencés dans le brouillon Wikipedia (`docs/wikipedia/Brouillon_KarenOS.wiki`).
