@@ -90,3 +90,4 @@ Au premier lancement, l'app télécharge le moteur d'inférence (~8 Mo) et l'ins
 
 - Sur Mac Intel, l'inférence se fait sur CPU (`Accelerate`). Sur Apple Silicon, mêmes fonctions, GPU Metal via arm64.
 - Les modèles vont directement dans `~/Library/Application Support/KarenOS/Models/`.
+- La section **About** contient une description et des tags, et tous les fichiers `.md` s'affichent proprement sur la page d'accueil du dépôt.
