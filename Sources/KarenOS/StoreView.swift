@@ -16,12 +16,7 @@
 import SwiftUI
 
 /// Onglet « Boutique » : sélection de modèles et recherche Hugging Face.
-    ///
-    /// Charge la sélection (`curatedIDs`) en arrière-plan, enrichit chaque
-    /// fiche via l'API et gère la recherche avec délai anti-rebond de 450 ms.
-    /// Les cartes filtrent les modèles gated ou sans fichier GGUF et ouvrent
-    /// la fiche détail (`.sheet`).
-    struct StoreView: View {
+struct StoreView: View {
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
 
@@ -40,88 +35,176 @@ import SwiftUI
     }
 
     private var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 250, maximum: 340), spacing: 14)]
+        [GridItem(.adaptive(minimum: 268, maximum: 360), spacing: 14)]
+    }
+
+    private var resultTitle: String {
+        if let activeSearch, !activeSearch.isEmpty {
+            return "Résultats pour « \(activeSearch) »"
+        }
+        return "Sélection KarenOS"
+    }
+
+    private var showLoading: Bool {
+        if isSearching && shown.isEmpty { return true }
+        return !curatedLoaded && activeSearch == nil
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            searchBar
-            Divider()
+            PageHeader(
+                icon: "bag",
+                title: "Boutique",
+                subtitle: "Des modèles ouverts, téléchargés une fois, exécutés pour toujours hors ligne.",
+                tint: KarenTheme.blue
+            ) {
+                HStack(spacing: 6) {
+                    KarenPill(text: "Hugging Face", systemImage: "network", tint: KarenTheme.blue)
+                    if curatedLoaded {
+                        KarenPill(
+                            text: "\(shown.count) modèle\(shown.count > 1 ? "s" : "")",
+                            tint: .secondary
+                        )
+                    }
+                }
+            }
+
+            searchArea
 
             if let error = errorMessage {
                 MessageBar(text: error, isError: true)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 8)
             }
 
-            if isSearching {
-                Spacer()
-                ProgressView("Recherche sur Hugging Face…")
-                Spacer()
-            } else if !curatedLoaded && activeSearch == nil {
-                searchingPlaceholder
+            if showLoading {
+                loadingState
             } else if shown.isEmpty {
-                emptyPlaceholder
+                emptyState
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 14) {
-                        ForEach(shown) { model in
-                            StoreCard(model: model)
-                                .onTapGesture { selectedDetail = model }
-                        }
-                    }
-                    .padding()
-                }
+                resultsHeader
+                modelGrid
             }
         }
-        .navigationTitle("Boutique")
         .sheet(item: $selectedDetail) { detail in
             StoreDetailSheet(model: detail)
         }
-        .task(id: query) { await searchChanged() }
-        .task { await loadCurated() }
+        .onChange(of: query) { _ in Task { await searchChanged() } }
+        .onAppear { Task { await loadCurated() } }
     }
 
-    private var searchBar: some View {
-        HStack(spacing: 8) {
+    // MARK: - Recherche
+
+    private var searchArea: some View {
+        HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField("Rechercher un modèle GGUF (ex : qwen, phi)…", text: $query)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            TextField("Rechercher un modèle GGUF (ex : qwen, phi, llama)…", text: $query)
                 .textFieldStyle(.plain)
+                .font(.system(size: 13))
+
+            if isSearching {
+                ProgressView()
+                    .controlSize(.small)
+                    .scaleEffect(0.8)
+            }
+
             if !query.isEmpty {
                 Button {
                     query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color.secondary.opacity(0.7))
                 }
                 .buttonStyle(.plain)
+                .help("Effacer la recherche")
             }
         }
-        .padding(10)
-        .background(.bar)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.8)
+        )
+        .padding(.horizontal, 24)
+        .padding(.bottom, 10)
     }
 
-    private var searchingPlaceholder: some View {
-        VStack(spacing: 12) {
+    private var resultsHeader: some View {
+        HStack(alignment: .center) {
+            SectionLabel(resultTitle)
+            Spacer()
+            Text("Les fichiers sont téléchargés depuis Hugging Face, puis exécutés localement.")
+                .font(.system(size: 9.5))
+                .foregroundColor(Color.secondary.opacity(0.7))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 10)
+    }
+
+    // MARK: - Grille
+
+    private var modelGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 14) {
+                ForEach(shown) { model in
+                    StoreCard(model: model)
+                        .onTapGesture { selectedDetail = model }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 22)
+
+            HStack(spacing: 6) {
+                Image(systemName: "lock.shield")
+                    .font(.system(size: 9))
+                Text("Les modèles restent sur votre Mac après le téléchargement.")
+                    .font(.system(size: 9.5))
+            }
+            .foregroundColor(Color.secondary.opacity(0.7))
+            .padding(.bottom, 20)
+        }
+    }
+
+    // MARK: - États
+
+    private var loadingState: some View {
+        VStack(spacing: 14) {
             ProgressView()
-            Text("Chargement de la sélection…")
-                .foregroundStyle(.secondary)
+                .controlSize(.small)
+            Text(isSearching ? "Recherche sur Hugging Face…" : "Chargement de la sélection…")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var emptyPlaceholder: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 42))
-                .foregroundStyle(.tertiary)
-            Text("Aucun résultat")
-                .font(.headline)
-            Text("Essaie une autre recherche.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+    private var emptyState: some View {
+        EmptyStateView(
+            icon: "magnifyingglass",
+            title: "Aucun modèle trouvé",
+            message: activeSearch == nil
+                ? "La sélection n'a pas pu être chargée. Vérifiez votre connexion puis réessayez."
+                : "Essayez un autre nom de modèle ou une quantification différente.",
+            tint: KarenTheme.blue,
+            actionTitle: query.isEmpty ? "Actualiser la sélection" : "Effacer la recherche",
+            action: {
+                if query.isEmpty {
+                    curatedLoaded = false
+                    Task { await loadCurated() }
+                } else {
+                    query = ""
+                }
+            }
+        )
     }
 
     // MARK: - Actions
@@ -185,29 +268,39 @@ private struct MessageBar: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: isError ? "exclamationmark.triangle.fill" : "info.circle")
-                .foregroundStyle(isError ? .orange : .secondary)
+                .font(.system(size: 10))
+                .foregroundColor(isError ? KarenTheme.amber : Color.secondary)
             Text(text)
-                .font(.caption)
-            Spacer()
+                .font(.system(size: 10.5))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(isError ? Color.orange.opacity(0.12) : Color.clear)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(isError ? KarenTheme.amber.opacity(0.08) : Color.primary.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(
+                    isError ? KarenTheme.amber.opacity(0.14) : Color.primary.opacity(0.06),
+                    lineWidth: 0.8
+                )
+        )
     }
 }
 
 /// Carte d'un modèle dans la grille de la Boutique.
-    ///
-    /// Affiche contexte, auteur, licences, taille estimée et l'état
-    /// (Installé / progression / Installer). Résout les détails absents via
-    /// l'API (`live`) et déclenche le téléchargement de la version par défaut.
-    struct StoreCard: View {
+struct StoreCard: View {
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
     let model: RemoteModel
 
     @State private var resolving = false
     @State private var live: RemoteModel?
+    @State private var hovering = false
 
     private var displayed: RemoteModel { live ?? model }
     private var installed: Bool { store.isInstalled(id: model.id) }
@@ -219,90 +312,133 @@ private struct MessageBar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: "cpu")
-                    .font(.title2)
-                    .foregroundStyle(.indigo)
-                Spacer()
-                Text(displayed.prettyContext.isEmpty ? "" : "\(displayed.prettyContext) ctx")
-                    .font(.caption)
-                    .padding(4)
-                    .background(Capsule().fill(.quaternary))
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(alignment: .top, spacing: 8) {
+                IconTile(symbol: "cpu", tint: KarenTheme.indigo, size: 38)
+
+                Spacer(minLength: 4)
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    if !displayed.prettyContext.isEmpty {
+                        KarenPill(text: "\(displayed.prettyContext) ctx", systemImage: "text.alignleft", tint: KarenTheme.violet)
+                    }
+                    if !displayed.licenseLabel.isEmpty {
+                        KarenPill(text: displayed.licenseLabel, tint: .secondary)
+                    }
+                }
             }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(displayed.displayName)
-                    .font(.headline)
-                    .lineLimit(1)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
                 Text("par \(displayed.author)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: 12) {
                 if displayed.downloads != nil {
-                    Label("\(displayed.downloadCountText)", systemImage: "arrow.down.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Label(displayed.downloadCountText, systemImage: "arrow.down.circle")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
                 }
                 if let size = defaultSize {
-                    Text(FileFormat.bytes(size))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Label(FileFormat.bytes(size), systemImage: "internaldrive")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
                 }
-                Spacer()
+                Spacer(minLength: 0)
             }
 
-            if installed {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(.green)
-                    Text("Installé")
-                }
-                .font(.footnote)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-            } else if isDownloading {
-                VStack(spacing: 4) {
-                    ProgressView(value: progress)
-                    Text("\(Int(progress * 100)) %")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            } else if resolving {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("Résolution…")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-            } else {
-                Button {
-                    installDefault()
-                } label: {
-                    Label("Installer", systemImage: "arrow.down.circle")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .disabled(!canInstall || engine.isInstallingEngine)
-            }
+            Rectangle()
+                .fill(Color.primary.opacity(0.05))
+                .frame(height: 1)
+
+            statusArea
 
             if let error = store.downloadError[model.id] {
                 Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .font(.system(size: 10))
+                    .foregroundColor(KarenTheme.coral)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color(nsColor: .controlBackgroundColor)))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.06)))
-        .task { await resolveIfNeeded() }
+        .padding(15)
+        .frame(maxWidth: .infinity, minHeight: 194, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(NSColor.controlBackgroundColor).opacity(0.90))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(
+                    hovering ? KarenTheme.indigo.opacity(0.24) : Color.primary.opacity(0.06),
+                    lineWidth: 1
+                )
+        )
+        .shadow(
+            color: .black.opacity(hovering ? 0.13 : 0.05),
+            radius: hovering ? 16 : 9,
+            x: 0,
+            y: hovering ? 9 : 5
+        )
+        .offset(y: hovering ? -2 : 0)
+        .animation(.easeOut(duration: 0.16), value: hovering)
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onHover { hovering = $0 }
+        .help("Voir les versions disponibles pour \(displayed.displayName)")
+        .onAppear { Task { await resolveIfNeeded() } }
+    }
+
+    @ViewBuilder
+    private var statusArea: some View {
+        if installed {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(KarenTheme.mint)
+                Text("Installé")
+                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                    .foregroundColor(KarenTheme.mint)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(KarenTheme.mint.opacity(0.09))
+            )
+        } else if isDownloading {
+            VStack(spacing: 4) {
+                ProgressView(value: progress)
+                    .accentColor(KarenTheme.indigo)
+                Text("Téléchargement · \(Int(progress * 100)) %")
+                    .font(.system(size: 9.5))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 2)
+        } else if resolving {
+            HStack(spacing: 7) {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Résolution des versions…")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+        } else {
+            Button {
+                installDefault()
+            } label: {
+                Label("Installer", systemImage: "arrow.down.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(KarenPrimaryButtonStyle())
+            .disabled(!canInstall || engine.isInstallingEngine)
+        }
     }
 
     private func installDefault() {

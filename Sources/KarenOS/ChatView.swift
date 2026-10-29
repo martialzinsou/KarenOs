@@ -17,18 +17,14 @@
 import SwiftUI
 
 /// Fenêtre de discussion avec un modèle : historique, streaming et entrées
-    /// multimodal (pièces jointes + dictée vocale).
-    ///
-    /// Déroulé du cycle de vie : vérification de la présence du fichier
-    /// (`modelMissing`), chargement (`start`), affichage des phases, puis
-    /// état `.loaded` où la barre d'entrée est active. La génération remplit
-    /// le message assistant bulle par bulle via `ChatService.streamReply`.
-    struct ChatView: View {
+/// multimodal (pièces jointes + dictée vocale).
+struct ChatView: View {
     let model: LocalModel
 
     @EnvironmentObject private var store: ModelStore
     @EnvironmentObject private var engine: EngineManager
     @EnvironmentObject private var skillStore: SkillStore
+    @EnvironmentObject private var resources: ResourceGovernor
 
     /// Phase de chargement d'un modèle, observée par l'interface du chat.
     enum Phase: Equatable {
@@ -43,15 +39,21 @@ import SwiftUI
     @State private var phase: Phase = .loading
     @State private var modelMissing = false
     @State private var pendingFiles: [ChatAttachment] = []
+    @State private var generationTask: Task<Void, Never>?
     @StateObject private var speech = SpeechInputController()
 
     private let emptyID = UUID()
 
+    private let suggestions: [(text: String, icon: String)] = [
+        ("Explique-moi un concept simplement", "lightbulb"),
+        ("Résume ce texte en 5 points", "list.bullet"),
+        ("Écris une fonction Swift propre", "curlybraces"),
+        ("Traduis ce message en anglais", "globe")
+    ]
+
     var body: some View {
         VStack(spacing: 0) {
             header
-
-            Divider()
 
             Group {
                 if modelMissing {
@@ -70,38 +72,70 @@ import SwiftUI
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if !modelMissing && phase != .loading {
-                Divider()
-                inputBar
+                composer
             }
         }
         .onAppear { modelMissing = !model.existsOnDisk }
-        .task { await start() }
+        .onAppear { Task { await start() } }
         .onAppear {
             speech.onFinalText = { text in
                 self.input.append(contentsOf: (self.input.isEmpty ? "" : " ") + text)
             }
         }
+        .onDisappear {
+            generationTask?.cancel()
+            if speech.isListening { speech.stop() }
+        }
     }
 
-    // MARK: - Sections
+    // MARK: - En-tête
 
     private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "sparkles")
-                .foregroundStyle(.indigo)
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: 12) {
+            IconTile(
+                symbol: "sparkles",
+                tint: phase.isReady ? KarenTheme.indigo : .secondary,
+                size: 38
+            )
+
+            VStack(alignment: .leading, spacing: 3) {
                 Text(model.friendlyName)
-                    .font(.headline)
-                Text("\(model.quantLabel) · \(model.sizeLabel)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 14.5, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    KarenPill(text: model.quantLabel, tint: KarenTheme.indigo)
+                    KarenPill(text: model.sizeLabel)
+                    Text("exécution locale")
+                        .font(.system(size: 9.5))
+                        .foregroundColor(Color.secondary.opacity(0.7))
+                }
             }
-            Spacer()
+
+            Spacer(minLength: 10)
+
+            if !messages.isEmpty {
+                Button {
+                    clearConversation()
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(KarenIconButtonStyle(size: 29))
+                .disabled(isGenerating)
+                .help("Effacer la conversation")
+            }
+
             skillMenu
             statusPill
         }
-        .padding()
-        .background(.bar)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 13)
+        .background(Color(NSColor.windowBackgroundColor).opacity(0.30))
+        .overlay(
+            Rectangle()
+                .fill(Color.primary.opacity(0.07))
+                .frame(height: 1),
+            alignment: .bottom
+        )
     }
 
     private var skillMenu: some View {
@@ -125,76 +159,117 @@ import SwiftUI
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: skillStore.activeSkill?.iconSymbol ?? "wand.and.stars")
+                    .font(.system(size: 10.5, weight: .semibold))
                 Text(skillStore.activeSkill?.name ?? "Compétence")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7.5, weight: .bold))
+                    .foregroundColor(Color.secondary.opacity(0.7))
             }
-            .font(.caption)
+            .foregroundColor(KarenTheme.indigo)
             .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(Color.indigo.opacity(0.14)))
-            .foregroundStyle(.indigo)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(KarenTheme.indigo.opacity(0.09)))
+            .overlay(Capsule().strokeBorder(KarenTheme.indigo.opacity(0.14), lineWidth: 0.8))
         }
         .menuStyle(.borderlessButton)
+        .help("Choisir une compétence pour cette conversation")
     }
 
     @ViewBuilder
     private var statusPill: some View {
-        switch phase {
-        case .loading:
-            Label("Chargement", systemImage: "hourglass")
-                .labelStyle(.titleAndIcon)
-                .font(.caption)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(.quaternary))
-        case .loaded:
-            Label("Prêt", systemImage: "checkmark.circle.fill")
-                .font(.caption)
-                .foregroundStyle(.green)
-        case .failed:
-            Label("Erreur", systemImage: "exclamationmark.triangle.fill")
-                .font(.caption)
-                .foregroundStyle(.orange)
+        if resources.isActive {
+            statusCapsule("Pleine puissance", tint: KarenTheme.coral) {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            .help("\(engine.resourceSummary)\nInférence et restitution à priorité maximale : ni veille ni App Nap. Le Neural Engine (NPU) n'est pas exposé aux processus tiers et reste réservé à macOS.")
+        } else {
+            switch phase {
+            case .loading:
+                statusCapsule("Chargement", tint: KarenTheme.blue) {
+                    ProgressView()
+                        .controlSize(.mini)
+                }
+            case .loaded:
+                statusCapsule("Prêt", tint: KarenTheme.mint) {
+                    StatusDot(color: KarenTheme.mint, pulsing: true)
+                }
+            case .failed:
+                statusCapsule("Erreur", tint: KarenTheme.amber) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 8))
+                }
+            }
         }
     }
 
-    private var loadingView: some View {
-        VStack(spacing: 14) {
-            ProgressView()
-                .scaleEffect(1.4)
-            Text("Chargement du modèle en mémoire…")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            Text("Le premier chargement peut être plus long.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+    private func statusCapsule<Indicator: View>(
+        _ text: String,
+        tint: Color,
+        @ViewBuilder indicator: () -> Indicator
+    ) -> some View {
+        HStack(spacing: 5) {
+            indicator()
+            Text(text)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
         }
-        .padding()
+        .foregroundColor(tint)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(tint.opacity(0.09)))
+        .overlay(Capsule().strokeBorder(tint.opacity(0.14), lineWidth: 0.8))
+    }
+
+    // MARK: - États
+
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            BrandMark(size: 58)
+            ProgressView()
+                .controlSize(.small)
+            VStack(spacing: 4) {
+                Text("Chargement du modèle en mémoire…")
+                    .font(.system(size: 12.5, weight: .medium))
+                Text("Le premier chargement peut être plus long.")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(Color.secondary.opacity(0.7))
+            }
+        }
+        .padding(40)
     }
 
     private func failureView(_ message: String) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.largeTitle)
-                .foregroundStyle(.orange)
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(KarenTheme.amber.opacity(0.10))
+                    .frame(width: 88, height: 88)
+                IconTile(symbol: "exclamationmark.triangle", tint: KarenTheme.amber, size: 52)
+            }
             Text("Impossible de charger le modèle")
-                .font(.headline)
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
             Text(message)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+                .frame(maxWidth: 380)
+                .fixedSize(horizontal: false, vertical: true)
             Button("Réessayer") {
                 Task { await start() }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(KarenPrimaryButtonStyle())
         }
         .padding(40)
-        .frame(maxWidth: 400)
+        .frame(maxWidth: 460)
     }
+
+    // MARK: - Conversation
 
     private var conversation: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 14) {
+                LazyVStack(spacing: 18) {
                     if messages.isEmpty {
                         emptyState
                             .id(emptyID)
@@ -204,40 +279,108 @@ import SwiftUI
                             .id(message.id)
                     }
                 }
-                .padding()
+                .padding(.horizontal, 30)
+                .padding(.vertical, 26)
+                .frame(maxWidth: 900)
+                .frame(maxWidth: .infinity)
             }
             .onChange(of: messages.last?.content ?? "") { _ in
-                withAnimation(.easeOut(duration: 0.15)) {
-                    proxy.scrollTo(messages.last?.id ?? emptyID, anchor: .bottom)
-                }
+                scroll(proxy)
             }
             .onChange(of: messages.count) { _ in
-                withAnimation(.easeOut(duration: 0.15)) {
-                    proxy.scrollTo(messages.last?.id ?? emptyID, anchor: .bottom)
-                }
+                scroll(proxy)
             }
         }
     }
 
+    private func scroll(_ proxy: ScrollViewProxy) {
+        withAnimation(.easeOut(duration: 0.15)) {
+            proxy.scrollTo(messages.last?.id ?? emptyID, anchor: .bottom)
+        }
+    }
+
     private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 42))
-                .foregroundStyle(.tertiary)
-            Text("Discute avec \(model.friendlyName)")
-                .font(.title3).bold()
-            Text("Tout est traité en local sur ton Mac.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            if let active = skillStore.activeSkill, !active.systemPrompt.isEmpty {
-                Label("Compétence active : \(active.name)", systemImage: active.iconSymbol)
-                    .font(.caption)
-                    .foregroundStyle(.indigo)
+        VStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .fill(KarenTheme.indigo.opacity(0.10))
+                    .frame(width: 124, height: 124)
+                    .blur(radius: 22)
+                BrandMark(size: 70)
             }
+
+            VStack(spacing: 6) {
+                Text("Bonjour, je suis \(model.friendlyName)")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .multilineTextAlignment(.center)
+                Text("Une conversation privée, exécutée entièrement sur votre Mac.")
+                    .font(.system(size: 12.5))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            if let active = skillStore.activeSkill, !active.systemPrompt.isEmpty {
+                HStack(spacing: 5) {
+                    Image(systemName: active.iconSymbol)
+                        .font(.system(size: 10, weight: .semibold))
+                    Text("Compétence active : \(active.name)")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(KarenTheme.violet)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(KarenTheme.violet.opacity(0.09)))
+                .overlay(Capsule().strokeBorder(KarenTheme.violet.opacity(0.14), lineWidth: 0.8))
+            }
+
+            VStack(spacing: 8) {
+                SectionLabel("Pour commencer")
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 210), spacing: 8)],
+                    spacing: 8
+                ) {
+                    ForEach(0..<suggestions.count, id: \.self) { index in
+                        let suggestion = suggestions[index]
+                        Button {
+                            input = suggestion.text
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: suggestion.icon)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(KarenTheme.indigo)
+                                Text(suggestion.text)
+                                    .font(.system(size: 11.5, weight: .medium))
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 9)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.72))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.8)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .frame(maxWidth: 470)
+
+            Text("Aucune donnée ne quitte votre Mac.")
+                .font(.system(size: 9.5))
+                .foregroundColor(Color.secondary.opacity(0.7))
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 60)
+        .padding(.top, 42)
+        .padding(.bottom, 20)
     }
+
+    // MARK: - Composeur
 
     private var visionWarning: String? {
         guard !engine.hasVision,
@@ -247,44 +390,76 @@ import SwiftUI
         return "Le modèle actif ne supporte pas les images : elles sont affichées mais ne seront pas analysées. Utilise un modèle vision (fichier .mmproj) pour l'analyse d'images."
     }
 
-    private var inputBar: some View {
+    private var composer: some View {
         VStack(spacing: 8) {
             if let warning = visionWarning {
-                HStack(spacing: 6) {
+                HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
+                        .font(.system(size: 10))
+                        .foregroundColor(KarenTheme.amber)
+                        .padding(.top, 1)
                     Text(warning)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.system(size: 10.5))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(KarenTheme.amber.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(KarenTheme.amber.opacity(0.14), lineWidth: 0.8)
+                )
             }
+
             if !pendingFiles.isEmpty {
                 pendingFilesRow
             }
+
             if speech.isListening {
                 liveDictationRow
             }
-            HStack(spacing: 10) {
+
+            HStack(alignment: .bottom, spacing: 9) {
                 attachMenu
                 micButton
-                TextField("Écris ton message…", text: $input, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary))
-                    .lineLimit(1...6)
-                    .onSubmit { submit() }
 
-                Button(action: submit) {
-                    Image(systemName: isGenerating ? "stop.circle.fill" : "arrow.up.circle.fill")
-                        .font(.system(size: 28))
-                }
-                .buttonStyle(.plain)
-                .disabled(!canSend)
+                TextField("Écrivez votre message…", text: $input)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.primary.opacity(0.04))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
+                    )
+                    .lineLimit(1)
+
+                sendButton
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.82))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 6)
         }
-        .padding(12)
+        .padding(.horizontal, 22)
+        .padding(.top, 10)
+        .padding(.bottom, 16)
     }
 
     private var attachMenu: some View {
@@ -295,9 +470,11 @@ import SwiftUI
             Button { addFiles(.file) } label: { Label("Fichier…", systemImage: "doc") }
         } label: {
             Image(systemName: "paperclip")
-                .padding(4)
         }
         .menuStyle(.borderlessButton)
+        .frame(width: 30, height: 30)
+        .background(Circle().fill(Color.primary.opacity(0.055)))
+        .overlay(Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.8))
         .disabled(isGenerating)
         .help("Joindre des fichiers : image, vidéo, audio ou tout autre fichier.")
     }
@@ -305,12 +482,43 @@ import SwiftUI
     private var micButton: some View {
         Button(action: toggleSpeech) {
             Image(systemName: speech.isListening ? "mic.fill" : "mic")
-                .foregroundStyle(speech.isListening ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
-                .padding(4)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(speech.isListening ? KarenTheme.coral : Color.secondary)
+                .frame(width: 30, height: 30)
+                .background(
+                    Circle().fill(
+                        speech.isListening
+                            ? KarenTheme.coral.opacity(0.12)
+                            : Color.primary.opacity(0.055)
+                    )
+                )
+                .overlay(Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.8))
         }
         .buttonStyle(.plain)
         .disabled(isGenerating)
-        .help("Dicter ton message à l'application (reconnaissance vocale locale).")
+        .help("Dicter votre message (reconnaissance vocale locale).")
+    }
+
+    private var sendButton: some View {
+        Button(action: submit) {
+            Image(systemName: isGenerating ? "stop.fill" : "arrow.up")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle().fill(sendFill)
+                )
+                .shadow(
+                    color: isGenerating ? KarenTheme.coral.opacity(0.24) : KarenTheme.indigo.opacity(canSend ? 0.28 : 0),
+                    radius: 7,
+                    x: 0,
+                    y: 3
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSend && !isGenerating)
+        .keyboardShortcut(.return, modifiers: [.command])
+        .help(isGenerating ? "Arrêter la génération" : "Envoyer le message (⌘↩)")
     }
 
     private var pendingFilesRow: some View {
@@ -327,27 +535,45 @@ import SwiftUI
 
     private var liveDictationRow: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(.red)
-                .frame(width: 8, height: 8)
-            Text(speech.liveText.isEmpty ? "À l'écoute… parle pour dicter ton message." : speech.liveText)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            StatusDot(color: KarenTheme.coral, pulsing: true)
+            Text(speech.liveText.isEmpty ? "À l'écoute… parlez pour dicter votre message." : speech.liveText)
+                .font(.system(size: 11.5))
+                .foregroundColor(.secondary)
                 .lineLimit(2)
             Spacer()
             Button {
                 speech.stop()
             } label: {
                 Image(systemName: "stop.fill")
+                    .font(.system(size: 9, weight: .bold))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(KarenIconButtonStyle(size: 24, tint: KarenTheme.coral))
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(KarenTheme.coral.opacity(0.07))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(KarenTheme.coral.opacity(0.12), lineWidth: 0.8)
+        )
     }
 
     private var canSend: Bool {
         phase == .loaded && !isGenerating
             && (!input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !pendingFiles.isEmpty)
+    }
+
+    private var sendFill: LinearGradient {
+        if canSend && !isGenerating { return KarenTheme.brand }
+        let base = isGenerating ? KarenTheme.coral : Color.secondary.opacity(0.35)
+        return LinearGradient(
+            colors: [base, base],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
     // MARK: - Actions
@@ -373,7 +599,7 @@ import SwiftUI
         let assistant = ChatMessage.assistant()
         messages.append(assistant)
         isGenerating = true
-        Task { await generate(into: assistant) }
+        generationTask = Task { await generate(into: assistant) }
     }
 
     private func addFiles(_ kind: ChatAttachment.Kind) {
@@ -395,6 +621,11 @@ import SwiftUI
             phase = .failed("Le moteur ne répond pas.")
             return
         }
+        // De l'inférence à la restitution : verrou de ressources (veille,
+        // App Nap, priorité) relâché quoi qu'il arrive (fin, erreur, arrêt).
+        resources.begin()
+        defer { resources.end() }
+
         var history = Array(messages.dropLast())
         if let active = skillStore.activeSkill, !active.systemPrompt.isEmpty {
             history.insert(.system(active.systemPrompt), at: 0)
@@ -402,23 +633,37 @@ import SwiftUI
         var accumulated = ""
         do {
             for try await piece in ChatService.streamReply(history, baseURL: baseURL, vision: engine.hasVision) {
+                if Task.isCancelled { break }
                 accumulated += piece
                 if let idx = messages.firstIndex(where: { $0.id == assistant.id }) {
                     messages[idx].content = accumulated
                 }
             }
         } catch {
-            if let idx = messages.firstIndex(where: { $0.id == assistant.id }) {
+            if !Task.isCancelled,
+               let idx = messages.firstIndex(where: { $0.id == assistant.id }) {
                 messages[idx].content = accumulated + "\n\n— (Erreur : \(error.localizedDescription))"
             }
         }
         isGenerating = false
+        generationTask = nil
     }
 
     private func cancelGeneration() {
+        generationTask?.cancel()
+        generationTask = nil
         isGenerating = false
     }
+
+    private func clearConversation() {
+        cancelGeneration()
+        withAnimation(.easeInOut(duration: 0.15)) {
+            messages.removeAll()
+        }
+    }
 }
+
+// MARK: - Bulles
 
 private struct MessageBubble: View {
     let message: ChatMessage
@@ -426,8 +671,14 @@ private struct MessageBubble: View {
     var isUser: Bool { message.role == "user" }
 
     var body: some View {
-        HStack {
-            if isUser { Spacer(minLength: 60) }
+        HStack(alignment: .top, spacing: 10) {
+            if isUser { Spacer(minLength: 70) }
+
+            if !isUser {
+                BrandMark(size: 26)
+                    .padding(.top, 2)
+            }
+
             VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
                 if !message.attachments.isEmpty {
                     HStack(spacing: 6) {
@@ -436,21 +687,53 @@ private struct MessageBubble: View {
                         }
                     }
                 }
-                Text(message.content.isEmpty ? "…" : message.content)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+
+                if isUser {
+                    if !message.content.isEmpty {
+                        Text(message.content)
+                            .font(.system(size: 13))
+                            .lineSpacing(2)
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 9)
+                            .foregroundColor(.white)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(KarenTheme.brand)
+                            )
+                            .shadow(color: KarenTheme.indigo.opacity(0.18), radius: 8, x: 0, y: 4)
+                    }
+                } else {
+                    Group {
+                        if message.content.isEmpty {
+                            TypingDots()
+                                .padding(.vertical, 3)
+                        } else {
+                            Text(message.content)
+                                .font(.system(size: 13))
+                                .lineSpacing(2.5)
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(isUser ? AnyShapeStyle(Color.indigo) : AnyShapeStyle(Color(nsColor: .controlBackgroundColor)))
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color(NSColor.controlBackgroundColor).opacity(0.86))
                     )
-                    .foregroundStyle(isUser ? .white : .primary)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.8)
+                    )
+                }
             }
-            if !isUser { Spacer(minLength: 60) }
+            .frame(maxWidth: 680, alignment: isUser ? .trailing : .leading)
+
+            if !isUser { Spacer(minLength: 70) }
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
     }
 }
+
+// MARK: - Pièces jointes
 
 private struct AttachmentThumb: View {
     let file: ChatAttachment
@@ -462,18 +745,26 @@ private struct AttachmentThumb: View {
                     .resizable()
                     .scaledToFill()
                     .frame(maxWidth: 240, maxHeight: 180)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             } else {
-                VStack(spacing: 4) {
+                VStack(spacing: 5) {
                     Image(systemName: iconName)
-                        .font(.system(size: 22))
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(KarenTheme.indigo)
                     Text(file.fileName)
-                        .font(.caption2)
+                        .font(.system(size: 9.5))
                         .lineLimit(1)
                 }
-                .padding(8)
-                .frame(width: 110)
-                .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
+                .padding(9)
+                .frame(width: 116)
+                .background(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .fill(Color(NSColor.controlBackgroundColor))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.8)
+                )
             }
         }
         .contextMenu {
@@ -500,20 +791,22 @@ private struct AttachmentChip: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: iconName)
-                .font(.caption)
+                .font(.system(size: 9.5, weight: .semibold))
+                .foregroundColor(KarenTheme.indigo)
             Text(file.fileName)
-                .font(.caption)
+                .font(.system(size: 10.5))
                 .lineLimit(1)
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 10))
+                    .foregroundColor(Color.secondary.opacity(0.7))
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 9)
         .padding(.vertical, 5)
-        .background(Capsule().fill(Color(nsColor: .controlBackgroundColor)))
+        .background(Capsule().fill(Color.primary.opacity(0.055)))
+        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.8))
     }
 
     private var iconName: String {
@@ -526,19 +819,31 @@ private struct AttachmentChip: View {
     }
 }
 
+// MARK: - Modèle manquant
+
 private struct ModelMissingView: View {
     let model: LocalModel
 
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "tray.and.arrow.down")
-                .font(.largeTitle)
-                .foregroundStyle(.secondary)
-            Text("Modèle introuvable sur le disque")
-            Text("Re-télécharge \(model.friendlyName) depuis la Boutique.")
-                .foregroundStyle(.secondary)
-        }
-        .padding(40)
+        EmptyStateView(
+            icon: "tray.and.arrow.down",
+            title: "Modèle introuvable sur le disque",
+            message: "Re-téléchargez \(model.friendlyName) depuis la Boutique pour reprendre la conversation.",
+            tint: KarenTheme.amber,
+            actionTitle: "Ouvrir la Boutique",
+            action: {
+                NotificationCenter.default.post(name: .karenSelectTab, object: 1)
+            }
+        )
+    }
+}
+
+// MARK: - Aides
+
+private extension ChatView.Phase {
+    var isReady: Bool {
+        if case .loaded = self { return true }
+        return false
     }
 }
 

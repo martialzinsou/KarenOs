@@ -235,6 +235,8 @@ final class AgentRunner: ObservableObject {
             pendingActionResults = nil
         }
         var accumulated = ""
+        ResourceGovernor.shared.begin()
+        defer { ResourceGovernor.shared.end() }
         for try await piece in ChatService.streamReply(messages, baseURL: baseURL, vision: engine?.hasVision ?? false) {
             try Task.checkCancellation()
             accumulated += piece

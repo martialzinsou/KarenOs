@@ -451,7 +451,7 @@ Sources/KarenOS/
 
 ## 10. Construction et lancement
 
-Pré-requis : **macOS 13+** et les outils de ligne de commande (`xcode-select --install`) — **pas besoin d'Xcode**.
+Pré-requis : **macOS 11 (Big Sur) ou plus récent** et les outils de ligne de commande (`xcode-select --install`) — **pas besoin d'Xcode**.
 
 ```bash
 Scripts/make-app.sh          # compile (swiftc -O) et assemble build/KarenOS.app
@@ -459,7 +459,7 @@ Scripts/make-app.sh --run    # compile puis ouvre l'app
 Scripts/make-icon.sh         # (re)génère l'icône Packaging/KarenOS.icns
 ```
 
-Au premier lancement, l'app télécharge le moteur `llama-server` (~8 Mo) depuis les releases GitHub de llama.cpp selon l'architecture (`x64` ou `arm64`) et l'installe dans le dossier de support.
+Le moteur `llama-server` est **embarqué** dans le bundle (`Contents/Resources/Engine`, llama.cpp b8967 recompilé avec `CMAKE_OSX_DEPLOYMENT_TARGET=11.0`) : KarenOS fonctionne donc dès macOS 11, sans téléchargement. Sur macOS 12+, si le moteur embarqué est absent, l'app retombe sur l'archive officielle des releases GitHub de llama.cpp selon l'architecture (`x64` ou `arm64`). Le runtime de concurrence Swift (`libswift_Concurrency.dylib`) est embarqué dans `Contents/Frameworks` pour Big Sur.
 
 ---
 
@@ -472,6 +472,9 @@ Au premier lancement, l'app télécharge le moteur `llama-server` (~8 Mo) depuis
 | Téléchargement lent / erreur | Réseau ou quota Hugging Face | Réessayer ; les retries sont automatiques (×3) |
 | Le moteur reste à « installation » | Premier téléchargement GitHub | Patienter (progress bar dans la barre d'outils) |
 | Erreur affichée en rouge sur une carte | Modèle gated ou erreur HTTP | Choisir un autre modèle |
+| Réponse bloquée sur « C'est » avec le spinner | Modèle « thinking » (Gemma 4) qui streame sa réflexion dans `reasoning_content` jusqu'à épuisement des 512 tokens | Corrigé : `--reasoning off` au lancement et lecture de `reasoning_content` dans `ChatService` |
+| `llama-server` reste en mémoire après avoir quitté l'app | Arrêt « gracieux » du serveur bloqué (observé après un second SIGINT) | Corrigé : `EngineManager` envoie SIGTERM, attend 1,5 s puis SIGKILL ; l'arrêt est déclenché aussi par `applicationWillTerminate` |
+| L'app refuse de démarrer sous Big Sur | Moteur officiel (macOS 13) utilisé | Utiliser `build/KarenOS.app` construit par `Scripts/make-app.sh` : le moteur embarqué est minos 11.0 (voir `docs/BIG-SUR.md`) |
 
 ---
 

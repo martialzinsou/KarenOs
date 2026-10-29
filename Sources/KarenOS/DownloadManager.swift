@@ -67,10 +67,38 @@ final class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
         let delegate = DownloadDelegate()
         delegate.progress = progress
         let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-        defer { session.invalidateAndCancel() }
+        defer { session.finishTasksAndInvalidate() }
 
-        let (tmpURL, response) = try await session.download(from: url)
-        guard let http = response as? HTTPURLResponse else {
+        // `URLSession.download(from:)` date de macOS 12 : on passe par la
+        // variante à complétion, disponible depuis macOS 10.15.
+        let result: (URL, URLResponse) = try await withCheckedThrowingContinuation { continuation in
+            let task = session.downloadTask(with: url) { location, response, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let location, let response else {
+                    continuation.resume(throwing: URLError(.badServerResponse))
+                    return
+                }
+                // Le fichier temporaire est supprimé dès le retour du bloc :
+                // on le déplace immédiatement vers un emplacement stable.
+                let stable = fm.temporaryDirectory
+                    .appendingPathComponent("karen-download-\(UUID().uuidString)")
+                do {
+                    try fm.moveItem(at: location, to: stable)
+                    continuation.resume(returning: (stable, response))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+            task.resume()
+        }
+
+        let tmpURL = result.0
+        defer { try? fm.removeItem(at: tmpURL) }
+
+        guard let http = result.1 as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
         guard (200..<300).contains(http.statusCode) else {

@@ -44,14 +44,165 @@ enum ChatError: LocalizedError {
     }
 }
 
-/// Sert le dialogue avec le moteur : envoi de l'historique et lecture
-    /// streaming des réponses `data:` (SSE).
-    enum ChatService {
-    /// Boîte tampon permettant d'annuler la tâche réseau depuis l'aval.
-    private final class TaskBox {
-        var task: Task<Void, Never>?
+/// Client SSE compatible macOS 11 (Big Sur).
+///
+/// `URLSession.bytes(for:)` et `AsyncLineSequence` n'existent qu'à partir de
+/// macOS 12. Ce délégué lit les octets au fil de l'eau, recompose les lignes
+/// et pousse le texte (réponse ou réflexion) dans le flux asynchrone.
+private final class SSEClient: NSObject, URLSessionDataDelegate {
+    private let continuation: AsyncThrowingStream<String, Error>.Continuation
+    private let lock = NSLock()
+    private var session: URLSession?
+    private var task: URLSessionDataTask?
+    private var buffer = Data()
+    private var finished = false
+    private var sawReasoning = false
+    private var sawContent = false
+
+    init(continuation: AsyncThrowingStream<String, Error>.Continuation) {
+        self.continuation = continuation
+        super.init()
     }
 
+    func start(_ request: URLRequest) {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 300
+        configuration.timeoutIntervalForResource = 600
+        let session = URLSession(
+            configuration: configuration,
+            delegate: self,
+            delegateQueue: nil
+        )
+        let task = session.dataTask(with: request)
+        lock.lock()
+        self.session = session
+        self.task = task
+        lock.unlock()
+        task.resume()
+    }
+
+    func cancel() {
+        lock.lock()
+        let task = self.task
+        let session = self.session
+        lock.unlock()
+        task?.cancel()
+        session?.invalidateAndCancel()
+        finish(nil)
+    }
+
+    private func finish(_ error: Error?) {
+        lock.lock()
+        if finished {
+            lock.unlock()
+            return
+        }
+        finished = true
+        let session = self.session
+        self.session = nil
+        self.task = nil
+        lock.unlock()
+
+        if let error {
+            continuation.finish(throwing: error)
+        } else {
+            continuation.finish()
+        }
+        session?.finishTasksAndInvalidate()
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        dataTask: URLSessionDataTask,
+        didReceive response: URLResponse,
+        completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+    ) {
+        guard let http = response as? HTTPURLResponse else {
+            completionHandler(.allow)
+            return
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            completionHandler(.cancel)
+            finish(ChatError.badStatus(http.statusCode))
+            return
+        }
+        completionHandler(.allow)
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        dataTask: URLSessionDataTask,
+        didReceive data: Data
+    ) {
+        buffer.append(data)
+        while let newline = buffer.firstIndex(of: 0x0A) {
+            var lineData = buffer[buffer.startIndex..<newline]
+            buffer.removeSubrange(buffer.startIndex...newline)
+            if lineData.last == 0x0D { lineData = lineData.dropLast() }
+            guard let line = String(data: lineData, encoding: .utf8) else { continue }
+            handle(line)
+        }
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionDataTask,
+        didCompleteWithError error: Error?
+    ) {
+        if !buffer.isEmpty {
+            var lineData = buffer
+            if lineData.last == 0x0D { lineData.removeLast() }
+            if let line = String(data: lineData, encoding: .utf8) { handle(line) }
+            buffer.removeAll()
+        }
+        if let error {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
+                finish(nil)
+            } else {
+                finish(error)
+            }
+        } else {
+            finish(nil)
+        }
+    }
+
+    private func handle(_ line: String) {
+        guard line.hasPrefix("data:") else { return }
+        let payload = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+        if payload == "[DONE]" {
+            finish(nil)
+            return
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let delta = choices.first?["delta"] as? [String: Any] else { return }
+
+        // Gemma 4 et les modèles « thinking » streament leur réflexion dans
+        // `reasoning_content` et la réponse dans `content`. Ignorer la
+        // réflexion laissait la bulle vide puis « C'est » quand le budget de
+        // tokens était consommé par le raisonnement. On affiche la réflexion
+        // tant qu'aucune réponse n'est disponible, puis la réponse.
+        if let text = delta["content"] as? String, !text.isEmpty {
+            if sawReasoning && !sawContent {
+                continuation.yield("\n\nRéponse :\n")
+            }
+            sawContent = true
+            continuation.yield(text)
+        } else if let thought = (delta["reasoning_content"] as? String)
+            ?? (delta["reasoning"] as? String), !thought.isEmpty {
+            if !sawReasoning {
+                sawReasoning = true
+                continuation.yield("Réflexion :\n")
+            }
+            continuation.yield(thought)
+        }
+    }
+}
+
+/// Sert le dialogue avec le moteur : envoi de l'historique et lecture
+/// streaming des réponses `data:` (SSE).
+enum ChatService {
     /// Appelle `POST /v1/chat/completions` en streaming.
     ///
     /// - Parameters:
@@ -61,9 +212,11 @@ enum ChatError: LocalizedError {
     ///     le format multi-part OpenAI (nécessite un `.mmproj` côté modèle).
     /// - Returns: un flux qui rend chaque fragment de texte généré.
     static func streamReply(_ history: [ChatMessage], baseURL: URL, vision: Bool = false) -> AsyncThrowingStream<String, Error> {
-        let box = TaskBox()
-        return AsyncThrowingStream { continuation in
-            box.task = Task {
+        AsyncThrowingStream { continuation in
+            let client = SSEClient(continuation: continuation)
+            continuation.onTermination = { _ in client.cancel() }
+
+            DispatchQueue.global(qos: .userInitiated).async {
                 do {
                     var req = URLRequest(url: baseURL.appendingPathComponent("v1/chat/completions"))
                     req.httpMethod = "POST"
@@ -88,29 +241,11 @@ enum ChatError: LocalizedError {
                         "temperature": 0.7
                     ]
                     req.httpBody = try JSONSerialization.data(withJSONObject: payload)
-
-                    let (bytes, response) = try await URLSession.shared.bytes(for: req)
-                    guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-                        throw ChatError.badStatus((response as? HTTPURLResponse)?.statusCode ?? -1)
-                    }
-
-                    for try await line in bytes.lines {
-                        if box.task?.isCancelled == true { break }
-                        guard line.hasPrefix("data:") else { continue }
-                        let payload = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-                        if payload == "[DONE]" { break }
-                        guard let json = try? JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any],
-                              let choices = json["choices"] as? [[String: Any]],
-                              let delta = choices.first?["delta"] as? [String: Any],
-                              let text = delta["content"] as? String else { continue }
-                        continuation.yield(text)
-                    }
-                    continuation.finish()
+                    client.start(req)
                 } catch {
                     continuation.finish(throwing: error)
                 }
             }
-            continuation.onTermination = { _ in box.task?.cancel() }
         }
     }
 

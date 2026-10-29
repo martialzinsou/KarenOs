@@ -7,22 +7,16 @@
 //    Rôle    : Onglet « Agents » : liste, fiche, contrôle et édition des agents.
 //    Dépend. : SwiftUI
 //  --------------------------------------------------------------------
-//    NavigationSplitView des agents (AgentStore) adossé au run en cours
-//    (AgentRunner). AgentDetail montre la mission, l'exécution, le journal
-//    et les contrôles (lancer/pause/reprendre/arrêter/effacer).
-//    AgentEditorSheet est l'éditeur complet : nom, icône, mission, modèle,
-//    déclencheur, boucle infinie et conditions de fin. StatusBadge colore
-//    l'état du run.
+//    Volet gauche : agents (AgentStore) avec état d'exécution. Volet droit :
+//    AgentDetail (mission, exécution, journal, contrôles). AgentEditorSheet
+//    est l'éditeur complet : nom, icône, mission, modèle, déclencheur,
+//    boucle infinie et conditions de fin. StatusBadge colore l'état du run.
 //  ====================================================================
 
 import SwiftUI
 
 /// Onglet « Agents » : liste des agents et fiche d'exécution.
-    ///
-    /// Adossé à `AgentStore` (liste) et `AgentRunner` (run en cours). Le détail
-    /// présente la mission, l'exécution, le journal et les contrôles ; la
-    /// feuille `AgentEditorSheet` crée/édite un agent.
-    struct AgentsView: View {
+struct AgentsView: View {
     @EnvironmentObject private var agentStore: AgentStore
     @EnvironmentObject private var runner: AgentRunner
     @EnvironmentObject private var engine: EngineManager
@@ -32,60 +26,9 @@ import SwiftUI
     @State private var editor: AgentEditorSheet.Mode?
 
     var body: some View {
-        NavigationSplitView {
-            List(selection: $selection) {
-                ForEach(agentStore.agents) { agent in
-                    AgentRow(agent: agent,
-                             modelName: modelLabel(agent.modelID),
-                             isActive: isRunning(agent))
-                        .tag(agent.id)
-                        .contextMenu {
-                            Button("Modifier") { editor = .edit(agent) }
-                            Button("Supprimer", role: .destructive) { agentStore.delete(agent) }
-                        }
-                }
-            }
-            .navigationTitle("Agents")
-            .overlay {
-                if agentStore.agents.isEmpty {
-                    ContentUnavailableAgentsPlaceholder(onCreate: { editor = .create })
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        editor = .create
-                    } label: {
-                        Label("Nouvel agent", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            if let id = selection, let agent = agentStore.agent(id) {
-                AgentDetail(agent: agent,
-                            modelName: modelLabel(agent.modelID),
-                            run: run(for: agent)) { action in
-                    switch action {
-                    case .launch:
-                        runner.start(agent, engine: engine, models: models)
-                    case .pause:
-                        runner.pause()
-                    case .resume:
-                        runner.resume()
-                    case .stop:
-                        runner.stop()
-                    case .clearLog:
-                        runner.clearLog()
-                    case .edit:
-                        editor = .edit(agent)
-                    case .delete:
-                        agentStore.delete(agent)
-                        selection = nil
-                    }
-                }
-            } else {
-                placeholderDetail
-            }
+        HStack(spacing: 0) {
+            sidebar
+            detail
         }
         .sheet(item: $editor) { mode in
             AgentEditorSheet(mode: mode) { saved in
@@ -97,6 +40,153 @@ import SwiftUI
                 runner.refreshAssignedAgent(agentStore: agentStore)
                 selection = saved.id
             }
+        }
+        .onChange(of: agentStore.agents.map { $0.id }) { ids in
+            if let current = selection, !ids.contains(current) {
+                selection = nil
+            }
+        }
+        .onAppear {
+            if ProcessInfo.processInfo.environment["KARENOS_OPEN_FIRST_AGENT"] == "1",
+               selection == nil {
+                selection = agentStore.agents.first?.id
+            }
+        }
+    }
+
+    // MARK: - Volet agents
+
+    private var sidebar: some View {
+        KarenSidebar {
+            VStack(spacing: 0) {
+                SidebarHeader(
+                    title: "Agents",
+                    subtitle: countLabel
+                ) {
+                    Button {
+                        editor = .create
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(KarenIconButtonStyle(size: 28))
+                    .help("Créer un nouvel agent")
+                }
+
+                if agentStore.agents.isEmpty {
+                    sidebarEmpty
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 4) {
+                            ForEach(agentStore.agents) { agent in
+                                AgentRow(
+                                    agent: agent,
+                                    modelName: modelLabel(agent.modelID),
+                                    isActive: isRunning(agent),
+                                    selected: selection == agent.id
+                                ) {
+                                    withAnimation(.easeInOut(duration: 0.12)) {
+                                        selection = agent.id
+                                    }
+                                }
+                                .contextMenu {
+                                    Button("Modifier") { editor = .edit(agent) }
+                                    Button("Supprimer") {
+                                        agentStore.delete(agent)
+                                        if selection == agent.id { selection = nil }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 12)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    Image(systemName: "bolt.horizontal.circle")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Text("Les agents utilisent vos modèles locaux.")
+                        .font(.system(size: 9.5))
+                        .foregroundColor(Color.secondary.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.primary.opacity(0.025))
+                .overlay(
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.06))
+                        .frame(height: 1),
+                    alignment: .top
+                )
+            }
+        }
+    }
+
+    private var countLabel: String {
+        let count = agentStore.agents.count
+        if count == 0 { return "Aucun agent" }
+        return count == 1 ? "1 agent configuré" : "\(count) agents configurés"
+    }
+
+    private var sidebarEmpty: some View {
+        VStack(spacing: 10) {
+            IconTile(symbol: "person.3", tint: .secondary, size: 46)
+            Text("Aucun agent")
+                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+            Text("Créez un agent autonome avec une mission, un modèle et des conditions de fin.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 200)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Créer un agent") { editor = .create }
+                .buttonStyle(KarenPrimaryButtonStyle())
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(24)
+    }
+
+    // MARK: - Volet détail
+
+    @ViewBuilder
+    private var detail: some View {
+        if let id = selection, let agent = agentStore.agent(id) {
+            AgentDetail(
+                agent: agent,
+                modelName: modelLabel(agent.modelID),
+                run: run(for: agent)
+            ) { action in
+                switch action {
+                case .launch:
+                    runner.start(agent, engine: engine, models: models)
+                case .pause:
+                    runner.pause()
+                case .resume:
+                    runner.resume()
+                case .stop:
+                    runner.stop()
+                case .clearLog:
+                    runner.clearLog()
+                case .edit:
+                    editor = .edit(agent)
+                case .delete:
+                    agentStore.delete(agent)
+                    selection = nil
+                }
+            }
+        } else {
+            EmptyStateView(
+                icon: "person.3",
+                title: "Pilotez vos agents",
+                message: "Donnez une mission à un modèle local, choisissez un déclencheur et suivez chaque itération dans le journal d'exécution.",
+                tint: KarenTheme.mint,
+                actionTitle: "Créer un agent",
+                action: { editor = .create }
+            )
         }
     }
 
@@ -112,57 +202,47 @@ import SwiftUI
         guard let model = models.installedModel(id: modelID) else { return modelID }
         return model.friendlyName
     }
-
-    private var placeholderDetail: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "person.3")
-                .font(.system(size: 46))
-                .foregroundStyle(.indigo)
-            Text("Sélectionne un agent")
-                .font(.title3).bold()
-            Text("Crée des agents autonomes : mission, modèle, déclencheur, boucle et conditions de fin.")
-                .foregroundStyle(.secondary)
-        }
-    }
 }
 
 /// Ligne de liste d'un agent (icône, nom, modèle, déclencheur, état).
-    struct AgentRow: View {
+struct AgentRow: View {
     let agent: Agent
     let modelName: String
     let isActive: Bool
+    let selected: Bool
+    let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: agent.iconSymbol)
-                .font(.title3)
-                .foregroundStyle(isActive ? AnyShapeStyle(.indigo) : AnyShapeStyle(Color.accentColor))
-                .frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(agent.name)
-                    .font(.headline)
-                    .lineLimit(1)
-                Text("\(modelName) · \(agent.trigger.label)\(agent.loopForever ? " · boucle ∞" : "")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            if isActive {
-                Image(systemName: "play.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.caption)
+        SelectableRow(selected: selected, action: action) {
+            HStack(spacing: 10) {
+                IconTile(
+                    symbol: agent.iconSymbol,
+                    tint: isActive ? KarenTheme.mint : KarenTheme.indigo,
+                    size: 34
+                )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(agent.name)
+                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                        .lineLimit(1)
+                    Text("\(modelName) · \(agent.trigger.label)\(agent.loopForever ? " · ∞" : "")")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 4)
+
+                if isActive {
+                    StatusDot(color: KarenTheme.mint, pulsing: true)
+                }
             }
         }
-        .padding(.vertical, 4)
     }
 }
 
 /// Fiche d'un agent : mission, configuration, journal et contrôles d'exécution.
-    ///
-    /// La même vue pilote le lancement (contrôles ad hoc selon l'état du run)
-    /// via le callout `onAction`, et affiche le `AgentRun` en direct.
-    struct AgentDetail: View {
+struct AgentDetail: View {
     let agent: Agent
     let modelName: String
     let run: AgentRun?
@@ -178,119 +258,177 @@ import SwiftUI
         case delete
     }
 
-    @EnvironmentObject private var models: ModelStore
-
     private var isRunning: Bool {
         run?.status == .running || run?.status == .paused
     }
 
-    private func section(title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-            content()
-                .font(.callout)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    header
+
+                    KarenPanel(padding: 16, radius: 15, fill: true) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            SectionLabel("Mission")
+                            Text(agent.systemPrompt.isEmpty ? "Aucune mission définie." : agent.systemPrompt)
+                                .font(.system(size: 12.5))
+                                .lineSpacing(2.5)
+                                .foregroundColor(agent.systemPrompt.isEmpty ? Color.secondary : Color.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    KarenPanel(padding: 16, radius: 15, fill: true) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            SectionLabel("Exécution")
+                            infoGrid
+                        }
+                    }
+
+                    if let run {
+                        runLog(run)
+                    }
+                }
+                .frame(maxWidth: 900, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(24)
+            }
+
+            Rectangle()
+                .fill(Color.primary.opacity(0.07))
+                .frame(height: 1)
+
+            controls
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                .background(Color(NSColor.windowBackgroundColor).opacity(0.28))
         }
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: agent.iconSymbol)
-                    .font(.system(size: 40))
-                    .foregroundStyle(.indigo)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 10) {
-                        Text(agent.name)
-                            .font(.title2).bold()
-                        if isRunning {
-                            StatusBadge(status: run?.status ?? .running)
-                        }
+    private var header: some View {
+        HStack(alignment: .top, spacing: 14) {
+            IconTile(
+                symbol: agent.iconSymbol,
+                tint: isRunning ? KarenTheme.mint : KarenTheme.indigo,
+                size: 52
+            )
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 9) {
+                    Text(agent.name)
+                        .font(.system(size: 23, weight: .bold, design: .rounded))
+                    if let run {
+                        StatusBadge(status: run.status)
                     }
-                    Text("Modèle : \(modelName)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
-                Spacer()
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                section(title: "Mission") {
-                    Text(agent.systemPrompt.isEmpty ? "Aucune mission définie." : agent.systemPrompt)
-                        .foregroundStyle(agent.systemPrompt.isEmpty ? .secondary : .primary)
-                }
-                section(title: "Exécution") {
-                    infoGrid
-                }
-                if let run {
-                    runLog(run)
+                HStack(spacing: 6) {
+                    KarenPill(text: modelName, systemImage: "cpu", tint: KarenTheme.indigo)
+                    KarenPill(text: agent.trigger.label, systemImage: "clock", tint: .secondary)
+                    if agent.loopForever {
+                        KarenPill(text: "Boucle infinie", systemImage: "repeat", tint: KarenTheme.violet)
+                    }
                 }
             }
 
-            Spacer()
-
-            controls
+            Spacer(minLength: 8)
         }
-        .padding(28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var infoGrid: some View {
-        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-            GridRow {
-                Text("Déclencheur").foregroundStyle(.secondary)
-                Text(agent.trigger.label)
-            }
-            GridRow {
-                Text("Boucle").foregroundStyle(.secondary)
-                Text(agent.loopForever ? "Infinie (tourne en continu)" : "Unique (une seule exécution)")
-            }
-            GridRow {
-                Text("Actions (shell)").foregroundStyle(.secondary)
-                Text(agent.allowsShell ? "Autorisées (logiciels + commandes)" : "Non autorisées")
-            }
-            GridRow {
-                Text("Conditions de fin").foregroundStyle(.secondary)
-                Text(agent.endConditions.isEmpty ? "Aucune" : agent.endConditions.map { $0.label }.joined(separator: " · "))
+        VStack(alignment: .leading, spacing: 7) {
+            infoRow("Déclencheur", agent.trigger.label)
+            infoRow("Boucle", agent.loopForever ? "Infinie (tourne en continu)" : "Unique (une seule exécution)")
+            infoRow("Actions (shell)", agent.allowsShell ? "Autorisées (logiciels + commandes)" : "Non autorisées")
+            infoRow(
+                "Conditions de fin",
+                agent.endConditions.isEmpty ? "Aucune" : agent.endConditions.map { $0.label }.joined(separator: " · ")
+            )
+        }
+        .font(.system(size: 11.5))
+    }
+
+    private func infoRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            Text(label)
+                .foregroundColor(.secondary)
+                .frame(width: 132, alignment: .leading)
+            Text(value)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private func runLog(_ run: AgentRun) -> some View {
+        KarenPanel(padding: 14, radius: 15, fill: true) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    SectionLabel("Journal d'exécution")
+                    Spacer()
+                    Text("\(run.iteration) itérations · depuis \(Self.time(run.startedAt))")
+                        .font(.system(size: 9.5))
+                        .foregroundColor(Color.secondary.opacity(0.7))
+                }
+
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(run.entries.enumerated()), id: \.element.id) { _, entry in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text(Self.time(entry.date))
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundColor(Color.secondary.opacity(0.7))
+                                Text(entry.text)
+                                    .font(.system(size: 10.5, design: .monospaced))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 190)
+                .padding(9)
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Color.primary.opacity(0.035))
+                )
             }
         }
-        .font(.callout)
     }
 
     @ViewBuilder
     private var controls: some View {
         if isRunning {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Button(action: { onAction(run?.status == .paused ? .resume : .pause) }) {
-                    Label(run?.status == .paused ? "Reprendre" : "Pause", systemImage: run?.status == .paused ? "play.fill" : "pause.fill")
+                    Label(run?.status == .paused ? "Reprendre" : "Pause",
+                          systemImage: run?.status == .paused ? "play.fill" : "pause.fill")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(KarenPrimaryButtonStyle())
 
-                Button(role: .destructive, action: { onAction(.stop) }) {
+                Button(action: { onAction(.stop) }) {
                     Label("Arrêter", systemImage: "stop.fill")
                 }
-                .buttonStyle(.bordered)
-
-                Spacer()
-            }
-        } else {
-            HStack(spacing: 12) {
-                Button(action: { onAction(.launch) }) {
-                    Label("Lancer la mission", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!agent.isReady || (models.installedModel(id: agent.modelID) == nil))
+                .buttonStyle(KarenSecondaryButtonStyle(tint: KarenTheme.coral))
 
                 Button(action: { onAction(.edit) }) {
                     Label("Modifier", systemImage: "pencil")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(KarenSecondaryButtonStyle())
+
+                Spacer()
+            }
+        } else {
+            HStack(spacing: 10) {
+                Button(action: { onAction(.launch) }) {
+                    Label("Lancer la mission", systemImage: "play.fill")
+                }
+                .buttonStyle(KarenPrimaryButtonStyle())
+                .disabled(!agent.isReady)
+
+                Button(action: { onAction(.edit) }) {
+                    Label("Modifier", systemImage: "pencil")
+                }
+                .buttonStyle(KarenSecondaryButtonStyle())
 
                 Spacer()
 
@@ -298,50 +436,14 @@ import SwiftUI
                     Button(action: { onAction(.clearLog) }) {
                         Label("Effacer le journal", systemImage: "trash")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(KarenSecondaryButtonStyle())
                 }
 
-                Button(role: .destructive, action: { onAction(.delete) }) {
+                Button(action: { onAction(.delete) }) {
                     Label("Supprimer", systemImage: "trash")
                 }
-                .buttonStyle(.bordered)
-                .foregroundStyle(.red)
+                .buttonStyle(KarenSecondaryButtonStyle(tint: KarenTheme.coral))
             }
-        }
-    }
-
-    @ViewBuilder
-    private func runLog(_ run: AgentRun) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Journal d'exécution")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                Spacer()
-                Text("\(run.iteration) itérations · depuis \(Self.time(run.startedAt))")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(run.entries.enumerated()), id: \.element.id) { _, entry in
-                        HStack(alignment: .top, spacing: 8) {
-                            Text(Self.time(entry.date))
-                                .font(.caption2)
-                                .monospacedDigit()
-                                .foregroundStyle(.tertiary)
-                            Text(entry.text)
-                                .font(.caption)
-                                .textSelection(.enabled)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxHeight: 220)
-            .padding(8)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
         }
     }
 
@@ -353,30 +455,29 @@ import SwiftUI
 }
 
 /// Pastille colorée de l'état d'un run (en cours, pause, terminé…).
-    struct StatusBadge: View {
+struct StatusBadge: View {
     let status: AgentRunStatus
 
     var body: some View {
         HStack(spacing: 5) {
-            Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
+            StatusDot(color: color, pulsing: status == .running)
             Text(title)
+                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
         }
-        .font(.caption)
         .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(Capsule().fill(color.opacity(0.15)))
-        .foregroundStyle(color)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(color.opacity(0.10)))
+        .overlay(Capsule().strokeBorder(color.opacity(0.16), lineWidth: 0.8))
+        .foregroundColor(color)
     }
 
     private var color: Color {
         switch status {
-        case .running: return .green
-        case .paused: return .orange
-        case .finished: return .blue
+        case .running: return KarenTheme.mint
+        case .paused: return KarenTheme.amber
+        case .finished: return KarenTheme.blue
         case .stopped: return .gray
-        case .failed: return .red
+        case .failed: return KarenTheme.coral
         }
     }
 
@@ -392,11 +493,7 @@ import SwiftUI
 }
 
 /// Éditeur d'agent : mission, modèle, déclencheur, boucle et conditions de fin.
-    ///
-    /// Mode `.create` ou `.edit(Agent)` (pré-rempli via `hydrate`). Les
-    /// conditions de fin (max itérations, durée, mot-clé) sont activables
-    /// indépendamment puis réunies par `buildEndConditions`.
-    struct AgentEditorSheet: View {
+struct AgentEditorSheet: View {
     enum Mode: Identifiable, Equatable {
         case create
         case edit(Agent)
@@ -413,7 +510,7 @@ import SwiftUI
     let onSave: (Agent) -> Void
 
     @EnvironmentObject private var models: ModelStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
 
     @State private var name = ""
     @State private var icon = ""
@@ -440,44 +537,139 @@ import SwiftUI
         "paperplane", "cross.case", "camera.macro", "leaf", "bolt.fill"
     ]
 
+    private var screenTitle: String {
+        if case .edit = mode { return "Modifier l'agent" }
+        return "Créer un agent"
+    }
+
+    private var saveTitle: String {
+        if case .edit = mode { return "Enregistrer" }
+        return "Créer l'agent"
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(mode.title)
-                    .font(.headline)
-                Spacer()
-            }
+        ZStack {
+            KarenBackground()
 
-            TextField("Nom (ex : Correcteur de code)", text: $name)
-                .textFieldStyle(.roundedBorder)
-
-            HStack(spacing: 8) {
-                TextField("Icône SF Symbol", text: $icon)
-                    .textFieldStyle(.roundedBorder)
-                Menu {
-                    ForEach(iconChoices, id: \.self) { symbol in
-                        Button {
-                            icon = symbol
-                        } label: {
-                            Label(symbol, systemImage: symbol)
-                        }
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    IconTile(symbol: icon.isEmpty ? "person.3" : icon, tint: KarenTheme.indigo, size: 40)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(screenTitle)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                        Text("Mission, modèle, déclencheur et conditions d'arrêt.")
+                            .font(.system(size: 10.5))
+                            .foregroundColor(.secondary)
                     }
-                } label: {
-                    Image(systemName: icon.isEmpty ? "square.grid.2x2" : icon)
-                        .frame(width: 20, height: 20)
+                    Spacer()
+                    Button {
+                        presentationMode.wrappedValue.dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(KarenIconButtonStyle(size: 26))
+                    .help("Fermer")
                 }
-                .menuStyle(.borderlessButton)
-                .help("Choisir une icône")
+                .padding(.horizontal, 22)
+                .padding(.top, 20)
+                .padding(.bottom, 14)
+
+                Rectangle()
+                    .fill(Color.primary.opacity(0.07))
+                    .frame(height: 1)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        identitySection
+                        missionSection
+                        modelSection
+                        triggerSection
+                        permissionsSection
+                        endConditionsEditor
+                    }
+                    .padding(22)
+                }
+
+                Rectangle()
+                    .fill(Color.primary.opacity(0.07))
+                    .frame(height: 1)
+
+                HStack {
+                    Spacer()
+                    Button("Annuler") { presentationMode.wrappedValue.dismiss() }
+                        .buttonStyle(KarenSecondaryButtonStyle())
+                    Button(action: save) {
+                        Text(saveTitle)
+                    }
+                    .buttonStyle(KarenPrimaryButtonStyle())
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 14)
             }
+        }
+        .frame(width: 660, height: 740)
+        .onAppear(perform: hydrate)
+    }
 
-            fieldEditor(title: "La mission de l'agent",
-                        placeholder: "Décris la mission en détail : objectif, méthode, livrables, interdits…",
-                        text: $mission)
+    // MARK: - Sections
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Modèle utilisé")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private var identitySection: some View {
+        KarenPanel(padding: 16, radius: 15) {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel("Identité")
+
+                styledField("Nom de l'agent", placeholder: "Ex : Correcteur de code", text: $name)
+
+                HStack(spacing: 8) {
+                    styledField("Icône SF Symbol", placeholder: "Ex : hammer", text: $icon)
+
+                    Menu {
+                        ForEach(iconChoices, id: \.self) { symbol in
+                            Button {
+                                icon = symbol
+                            } label: {
+                                Label(symbol, systemImage: symbol)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: icon.isEmpty ? "square.grid.2x2" : icon)
+                            .font(.system(size: 12, weight: .semibold))
+                            .frame(width: 34, height: 30)
+                            .background(
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .fill(Color.primary.opacity(0.05))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.8)
+                            )
+                    }
+                    .menuStyle(.borderlessButton)
+                    .help("Choisir une icône")
+                }
+            }
+        }
+    }
+
+    private var missionSection: some View {
+        KarenPanel(padding: 16, radius: 15) {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel("Mission")
+                fieldEditor(
+                    title: "La mission de l'agent",
+                    placeholder: "Décrivez la mission en détail : objectif, méthode, livrables, interdits…",
+                    text: $mission
+                )
+            }
+        }
+    }
+
+    private var modelSection: some View {
+        KarenPanel(padding: 16, radius: 15) {
+            VStack(alignment: .leading, spacing: 7) {
+                SectionLabel("Modèle utilisé")
+
                 Menu {
                     ForEach(models.installed) { model in
                         Button {
@@ -487,68 +679,191 @@ import SwiftUI
                         }
                     }
                     if models.installed.isEmpty {
-                        Text("Aucun modèle installé — va dans la Boutique.")
+                        Text("Aucun modèle installé — allez dans la Boutique.")
                     }
                 } label: {
                     HStack {
                         Text(modelLabel)
+                            .font(.system(size: 12, weight: .medium))
                         Spacer()
                         Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.secondary)
                     }
-                    .padding(8)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 9)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(Color.primary.opacity(0.05))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.8)
+                    )
                 }
                 .menuStyle(.borderlessButton)
             }
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Déclencheur")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private var triggerSection: some View {
+        KarenPanel(padding: 16, radius: 15) {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel("Déclencheur & boucle")
+
                 Picker("", selection: $triggerKind) {
-                    Text("Manuel (bouton Lancer)").tag(AgentTrigger.Kind.manual)
-                    Text("Au lancement de l'app").tag(AgentTrigger.Kind.onLaunch)
-                    Text("Toutes les X secondes").tag(AgentTrigger.Kind.interval)
+                    Text("Manuel").tag(AgentTrigger.Kind.manual)
+                    Text("Au lancement").tag(AgentTrigger.Kind.onLaunch)
+                    Text("Intervalle").tag(AgentTrigger.Kind.interval)
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
+
                 if triggerKind == .interval {
                     HStack {
-                        Text("Période :")
-                        Stepper("\(intervalSeconds) s", value: $intervalSeconds, in: 5...3600, step: 5)
+                        Text("Période")
+                            .font(.system(size: 11.5))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Stepper("\(intervalSeconds) secondes", value: $intervalSeconds, in: 5...3600, step: 5)
+                            .font(.system(size: 11.5))
                     }
-                    .font(.callout)
                 }
-            }
 
-            Toggle("Boucle infinie (tourne en continu jusqu'à une condition de fin)", isOn: $loopForever)
-                .font(.callout)
-
-            Toggle(isOn: $allowsShell) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Lancer des logiciels et exécuter des commandes")
-                        .font(.callout)
-                    Text("L'agent pourra demander des actions (open, shell…) via « ACTION: », avec résultats renvoyés. Surveille le journal d'exécution.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                Toggle(isOn: $loopForever) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Boucle infinie")
+                            .font(.system(size: 11.5, weight: .medium))
+                        Text("L'agent tourne en continu jusqu'à une condition de fin.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
                 }
-            }
-
-            endConditionsEditor
-
-            HStack {
-                Spacer()
-                Button("Annuler") { dismiss() }
-                    .buttonStyle(.bordered)
-                Button(action: save) {
-                    Text(mode.title)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .toggleStyle(.switch)
             }
         }
-        .padding(20)
-        .frame(width: 620, height: 760)
-        .onAppear(perform: hydrate)
+    }
+
+    private var permissionsSection: some View {
+        KarenPanel(padding: 16, radius: 15) {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel("Autorisations")
+
+                Toggle(isOn: $allowsShell) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Lancer des logiciels et exécuter des commandes")
+                            .font(.system(size: 11.5, weight: .medium))
+                        Text("L'agent peut demander des actions (open, shell…) via « ACTION: », avec résultats renvoyés. Surveillez le journal d'exécution.")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .toggleStyle(.switch)
+            }
+        }
+    }
+
+    private var endConditionsEditor: some View {
+        KarenPanel(padding: 16, radius: 15) {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel("Conditions de fin")
+
+                VStack(spacing: 8) {
+                    conditionRow(isOn: $useMaxIterations, label: "Arrêter après") {
+                        Stepper("\(maxIterations) itérations", value: $maxIterations, in: 1...1000)
+                            .disabled(!useMaxIterations)
+                    }
+
+                    conditionRow(isOn: $useMaxDuration, label: "Durée maximale") {
+                        Stepper("\(maxDurationMinutes) min", value: $maxDurationMinutes, in: 1...1440)
+                            .disabled(!useMaxDuration)
+                    }
+
+                    HStack(spacing: 8) {
+                        Toggle("", isOn: $useSuccessKeyword)
+                            .labelsHidden()
+                            .toggleStyle(.checkbox)
+                        Text("Arrêter si la réponse contient")
+                            .font(.system(size: 11.5))
+                        TextField("ex : TERMINÉ", text: $successKeyword)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 11.5))
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color.primary.opacity(0.05))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.8)
+                            )
+                            .frame(width: 150)
+                            .disabled(!useSuccessKeyword)
+                        Spacer()
+                    }
+                }
+            }
+        }
+    }
+
+    private func conditionRow<Accessory: View>(
+        isOn: Binding<Bool>,
+        label: String,
+        @ViewBuilder accessory: () -> Accessory
+    ) -> some View {
+        HStack(spacing: 8) {
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.checkbox)
+            Text(label)
+                .font(.system(size: 11.5))
+            accessory()
+            Spacer()
+        }
+    }
+
+    private func styledField(_ title: String, placeholder: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 9.5))
+                .foregroundColor(.secondary)
+            TextField(placeholder, text: text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Color.primary.opacity(0.05))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.8)
+                )
+        }
+    }
+
+    private func fieldEditor(title: String, placeholder: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            TextEditor(text: text)
+                .font(.system(size: 12))
+                .padding(7)
+                .background(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(Color.primary.opacity(0.04))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.8)
+                )
+                .frame(minHeight: 82)
+                .frame(maxHeight: 120)
+            Text(placeholder)
+                .font(.system(size: 9.5))
+                .foregroundColor(Color.secondary.opacity(0.7))
+        }
     }
 
     private var modelLabel: String {
@@ -556,58 +871,7 @@ import SwiftUI
         return models.installedModel(id: modelID)?.friendlyName ?? modelID
     }
 
-    private var endConditionsEditor: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Conditions de fin")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            VStack(spacing: 6) {
-                HStack {
-                    Toggle("", isOn: $useMaxIterations).labelsHidden()
-                    Text("Arrêter après")
-                    Stepper("\(maxIterations) itérations", value: $maxIterations, in: 1...1000)
-                        .disabled(!useMaxIterations)
-                    Spacer()
-                }
-                HStack {
-                    Toggle("", isOn: $useMaxDuration).labelsHidden()
-                    Text("Durée maximale")
-                    Stepper("\(maxDurationMinutes) min", value: $maxDurationMinutes, in: 1...1440)
-                        .disabled(!useMaxDuration)
-                    Spacer()
-                }
-                HStack {
-                    Toggle("", isOn: $useSuccessKeyword).labelsHidden()
-                    Text("Arrêter si la réponse contient le mot-clé")
-                    TextField("ex : TERMINÉ", text: $successKeyword)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 150)
-                        .disabled(!useSuccessKeyword)
-                }
-            }
-            .font(.callout)
-            .padding(10)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
-        }
-    }
-
-    private func fieldEditor(title: String, placeholder: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextEditor(text: text)
-                .font(.callout)
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
-                .frame(minHeight: 70)
-                .frame(maxHeight: 110)
-            Text(placeholder)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-    }
+    // MARK: - Données
 
     private func hydrate() {
         if case .edit(let agent) = mode {
@@ -674,37 +938,6 @@ import SwiftUI
             updated.createdAt = agent.createdAt
             onSave(updated)
         }
-        dismiss()
-    }
-}
-
-private extension AgentEditorSheet.Mode {
-    var title: String {
-        switch self {
-        case .create: return "Créer"
-        case .edit: return "Enregistrer"
-        }
-    }
-}
-
-private struct ContentUnavailableAgentsPlaceholder: View {
-    let onCreate: () -> Void
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "person.3")
-                .font(.system(size: 38))
-                .foregroundStyle(.tertiary)
-            Text("Aucun agent")
-                .font(.headline)
-            Text("Crée des agents autonomes : donne-leur une mission, un modèle, un déclencheur et des conditions de fin.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 260)
-            Button("Nouvel agent", action: onCreate)
-                .buttonStyle(.borderedProminent)
-        }
-        .padding()
+        presentationMode.wrappedValue.dismiss()
     }
 }

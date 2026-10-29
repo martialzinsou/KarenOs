@@ -30,7 +30,7 @@
 | **État** | En développement actif |
 | **Écrit en** | Swift 5.8+ / SwiftUI (100 % natif, sans Xcode — compilation `swiftc`) |
 | **Moteur d'inférence** | `llama-server` (llama.cpp) — API compatible OpenAI |
-| **Système d'exploitation** | macOS 13 et ultérieur (Ventura+) — architectures x64 et arm64 |
+| **Système d'exploitation** | macOS 11 (Big Sur) et ultérieur — architectures x64 et arm64 |
 | **Licence** | MIT |
 | **Distributions** | [Release v1.0.0 (zip)](https://github.com/martialzinsou/KarenOs/releases/tag/v1.0.0) · image conteneur [GHCR](https://github.com/users/martialzinsou/packages/container/package/karenos%2Fkarenos-llama-server) |
 
@@ -124,7 +124,7 @@ KarenOS est une application **monolithique structurée en couches** dont le cœu
 
 ```mermaid
 flowchart TB
-    subgraph HOST["Nœud macOS 13+ — poste de travail"]
+    subgraph HOST["Nœud macOS 11+ — poste de travail"]
         subgraph APP["KarenOS.app (SwiftUI)"]
             UI["ContentView · 4 volets<br/>Mes modèles · Boutique · Agents · Compétences"]
             SVCS["Stores (ObservableObject)<br/>ModelStore · EngineManager · SkillStore · AgentStore · AgentRunner"]
@@ -591,7 +591,7 @@ Points notables :
 
 **Exigences matérielles et logicielles**
 
-- macOS 13 (Ventura) ou ultérieur, `xcode-select --install` (pas d'Xcode).
+- macOS 11 (Big Sur) ou ultérieur, `xcode-select --install` (pas d'Xcode).
 - x64 (Intel, instructions AVX2) ou arm64 ; CPU recommandé avec AVX2 ; GPU métal non exploité (les kernels BUNA/BLAS Apple sont utilisés pour la multiplication matricielle).
 - Espace disque : taille des modèles choisis (dizaines de Mo à quelques Go).
 

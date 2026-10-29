@@ -1,0 +1,5 @@
+module CLlama [system] {
+    header "include/llama.h"
+    header "include/karen_llama_compat.h"
+    export *
+}

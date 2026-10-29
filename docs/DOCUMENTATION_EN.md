@@ -449,7 +449,7 @@ Sources/KarenOS/
 
 ## 10. Build and launch
 
-Prerequisites: **macOS 13+** and the command-line tools (`xcode-select --install`) — **no Xcode required**.
+Prerequisites: **macOS 11 (Big Sur) or later** and the command-line tools (`xcode-select --install`) — **no Xcode required**.
 
 ```bash
 Scripts/make-app.sh          # compiles (swiftc -O) and assembles build/KarenOS.app
@@ -457,7 +457,7 @@ Scripts/make-app.sh --run    # compiles then opens the app
 Scripts/make-icon.sh         # (re)generates the Packaging/KarenOS.icns icon
 ```
 
-On first launch, the app downloads the `llama-server` engine (~8 MB) from llama.cpp GitHub releases according to the architecture (`x64` or `arm64`) and installs it into the support folder.
+The `llama-server` engine is **embedded** in the bundle (`Contents/Resources/Engine`, llama.cpp b8967 rebuilt with `CMAKE_OSX_DEPLOYMENT_TARGET=11.0`), so KarenOS runs on macOS 11 without any download. On macOS 12+, if the embedded engine is missing, the app falls back to the official llama.cpp GitHub release for the current architecture (`x64` or `arm64`). The Swift concurrency runtime (`libswift_Concurrency.dylib`) is bundled in `Contents/Frameworks` for Big Sur.
 
 ---
 
@@ -470,6 +470,9 @@ On first launch, the app downloads the `llama-server` engine (~8 MB) from llama.
 | Slow / failing download | Network or Hugging Face quota | Retry; retries are automatic (×3) |
 | Engine stuck at "installing" | First GitHub download | Wait (progress bar in the toolbar) |
 | Red error on a card | Gated model or HTTP error | Pick another model |
+| Reply stuck on "C'est" with the spinner | "Thinking" model (Gemma 4) streaming its reasoning through `reasoning_content` until the 512-token budget is spent | Fixed: `--reasoning off` at launch and `reasoning_content` handling in `ChatService` |
+| `llama-server` stays in memory after quitting the app | Server's graceful shutdown hangs (observed after a second SIGINT) | Fixed: `EngineManager` sends SIGTERM, waits 1.5 s, then SIGKILL; shutdown also runs on `applicationWillTerminate` |
+| App refuses to start on Big Sur | Official (macOS 13) engine used | Use `build/KarenOS.app` built by `Scripts/make-app.sh`: its embedded engine is minos 11.0 (see `docs/BIG-SUR.md`) |
 
 ---
 
