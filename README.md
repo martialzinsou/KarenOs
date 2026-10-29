@@ -83,7 +83,7 @@ KARENOS_SMOKE_OUT=/tmp/karen_smoke.txt \
 
 1. Ouvrir **Boutique** → choisir un modèle (les petits modèles sont en haut de liste) → **Installer**.
 2. Aller dans **Mes modèles** → cliquer sur le modèle → le chat se charge automatiquement.
-3. Écrire un message et discuter. Tout est local (contexte de 2048 tokens, réponse limitée à 512 tokens par défaut, modifiable dans le code).
+3. Écrire un message et discuter. Tout est local (contexte de 8192 tokens, réponse limitée à 512 tokens par défaut, modifiable dans le code).
 
 Au premier lancement, l'app utilise le moteur d'inférence embarqué (`llama.cpp` b8967, recompilé pour macOS 11) ; sur macOS 12+, elle peut aussi télécharger l'archive officielle (~8 Mo) dans `~/Library/Application Support/KarenOS/`.
 

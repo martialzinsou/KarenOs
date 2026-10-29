@@ -31,7 +31,7 @@
   "@type": "SoftwareApplication",
   "name": "KarenOS",
   "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "macOS 13+",
+  "operatingSystem": "macOS 11+",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -92,7 +92,7 @@
 
 ## Предварительные требования
 
-- macOS 13 или версия posterior
+- macOS 11 (Big Sur) или версия posterior
 - Инструменты командной строки (`xcode-select --install`). Xcode no es obligatorio.
 
 ## Compilar y lanzar
@@ -107,9 +107,9 @@ Scripts/make-icon.sh         # (re)genera la hermosa icónica Packaging/KarenOS.
 
 1. Abrir **Tienda** → elegir un modelo (los modelos pequeños están en la parte superior de la lista) → **Instalar**.
 2. Ir a **Mis models** → hacer clic en el modelo → la carga del chat se realiza automáticamente.
-3. Напишите сообщение и общайтесь. Todo is local (контекст 2048 tokens, respuesta limitada por defecto a 512 tokens, modificable en el código).
+3. Напишите сообщение и общайтесь. Todo is local (контекст 8192 tokens, respuesta limitada por defecto a 512 tokens, modificable en el código).
 
-На первом запуске, la app descarga el motor de inferencia (~8 Mo) и lo instala en `~/Library/Application Support/KarenOS/`.
+Движок инференса **встроен в bundle приложения** (`Contents/Resources/Engine/`: `llama-server` и 7 dylib, пересобраны из llama.cpp b8967 для macOS 11), загрузка не требуется. На macOS 12+ приложение по-прежнему может использовать официальный архив llama.cpp в `~/Library/Application Support/KarenOS/`.
 
 ## Технические детали
 

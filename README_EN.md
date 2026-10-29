@@ -31,7 +31,7 @@
   "@type": "SoftwareApplication",
   "name": "KarenOS",
   "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "macOS 13+",
+  "operatingSystem": "macOS 11+",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -92,7 +92,7 @@ Application native macOS for using AI models **locally**: download GGUF models f
 
 ## Prerequisites
 
-- macOS 13 or newer
+- macOS 11 (Big Sur) or newer
 - Command line tools (`xcode-select --install`). Xcode is not required.
 
 ## Build and launch
@@ -107,9 +107,9 @@ Scripts/make-icon.sh         # (re)generate the beautiful Packaging/KarenOS.icns
 
 1. Open **Store** → choose a model (small models are at the top of the list) → **Install**.
 2. Go to **My models** → click on the model → the chat loads automatically.
-3. Write a message and chat. Everything is local (2048 token context, default 512 token response, modifiable in the code).
+3. Write a message and chat. Everything is local (8192 token context, default 512 token response, modifiable in the code).
 
-On first launch, the app downloads the inference engine (~8 Mo) and installs it in `~/Library/Application Support/KarenOS/`.
+The inference engine is **embedded in the app bundle** (`Contents/Resources/Engine/`: `llama-server` plus 7 dylibs rebuilt from llama.cpp b8967 for macOS 11), so no download is needed. On macOS 12+ the app can still fall back to the official llama.cpp archive in `~/Library/Application Support/KarenOS/`.
 
 ## Technical details
 

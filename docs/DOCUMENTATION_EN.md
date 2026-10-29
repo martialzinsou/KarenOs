@@ -95,7 +95,7 @@ flowchart TB
     subgraph Disk["~/Library/Application Support/KarenOS/"]
         ModelsDir["Models/*.gguf"]
         Registry["models.json — installed models"]
-        EngineDir["Engine/llama-b8967/llama-server"]
+        EngineDir["Contents/Resources/Engine/llama-server<br/>(embedded engine, minos 11.0)"]
         SkillsFile["skills.json — skills"]
         ServerLog["server.log"]
     end
@@ -190,7 +190,7 @@ sequenceDiagram
 
     V->>E: load(model)
     E->>E: engine installed? otherwise download + extract
-    E->>P: launches "llama-server -m model.gguf --host 127.0.0.1 --port N -c 2048"
+    E->>P: launches "llama-server -m model.gguf --host 127.0.0.1 --port N -c 8192 -np 1 -t {physical cores} --reasoning off"
     E->>E: picks a free port
     loop every 0.8 s (max 120 s)
         E->>H: GET /health
@@ -478,7 +478,7 @@ The `llama-server` engine is **embedded** in the bundle (`Contents/Resources/Eng
 
 ## 12. Limits and roadmap
 
-- **Short context**: window fixed at `2048` tokens (`-c 2048`), reply capped at `512` tokens.
+- **Fixed context**: window of `8192` tokens (`-c 8192`), a single slot (`-np 1`), reply capped at `512` tokens.
 - **One active model at a time**: the engine loads a single model per chat session.
 - **Small models**: ideal for Qwen 0.5–3 B, SmolLM2, and Phi-3; bigger models (7 B+) still work but are slow on Intel CPU.
 - Possible evolutions: conversation history, automatic summaries, explicit context-window selection, loading multiple models.

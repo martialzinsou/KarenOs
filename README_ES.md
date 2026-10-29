@@ -31,7 +31,7 @@
   "@type": "SoftwareApplication",
   "name": "KarenOS",
   "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "macOS 13+",
+  "operatingSystem": "macOS 11+",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -92,7 +92,7 @@ Aplicación nativa macOS para usar modelos de IA **localmente**: descargar model
 
 ## Pre-requisitos
 
-- macOS 13 o versión posterior
+- macOS 11 (Big Sur) o versión posterior
 - Herramientas de línea de comandos (`xcode-select --install`). Xcode no es obligatorio.
 
 ## Compilar y lanzar
@@ -107,9 +107,9 @@ Scripts/make-icon.sh         # (re)genera la hermosa icónica Packaging/KarenOS.
 
 1. Abrir **Tienda** → elegir un modelo (los modelos pequeños están en la parte superior de la lista) → **Instalar**.
 2. Ir a **Mis modelos** → hacer clic en el modelo → la carga del chat se realiza automáticamente.
-3. Escriba un mensaje y charla. Todo es local (contexto de 2048 tokens, respuesta limitada por defecto a 512 tokens, modificable en el código).
+3. Escriba un mensaje y charla. Todo es local (contexto de 8192 tokens, respuesta limitada por defecto a 512 tokens, modificable en el código).
 
-En el primer lanzamiento, la app descarga el motor de inferencia (~8 Mo) y lo instala en `~/Library/Application Support/KarenOS/`.
+El motor de inferencia está **integrado en el bundle de la app** (`Contents/Resources/Engine/`: `llama-server` y 7 dylib recompilados de llama.cpp b8967 para macOS 11), así que no hace falta descargarlo. En macOS 12+ la app aún puede recurrir al archivo oficial de llama.cpp en `~/Library/Application Support/KarenOS/`.
 
 ## Detalles técnicos
 

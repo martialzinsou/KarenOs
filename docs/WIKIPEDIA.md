@@ -29,8 +29,8 @@
 | **Dépôt** | [github.com/martialzinsou/KarenOs](https://github.com/martialzinsou/KarenOs) |
 | **État** | En développement actif |
 | **Écrit en** | Swift 5.8+ / SwiftUI (100 % natif, sans Xcode — compilation `swiftc`) |
-| **Moteur d'inférence** | `llama-server` (llama.cpp) — API compatible OpenAI |
-| **Système d'exploitation** | macOS 11 (Big Sur) et ultérieur — architectures x64 et arm64 |
+| **Moteur d'inférence** | `llama-server` (llama.cpp `b8967` recompilé pour macOS 11) **embarqué dans le bundle** — API compatible OpenAI |
+| **Système d'exploitation** | macOS 11 (Big Sur) et ultérieur — binaire x86_64 (Intel natif, Apple Silicon via Rosetta 2) |
 | **Licence** | MIT |
 | **Distributions** | [Release v1.0.0 (zip)](https://github.com/martialzinsou/KarenOs/releases/tag/v1.0.0) · image conteneur [GHCR](https://github.com/users/martialzinsou/packages/container/package/karenos%2Fkarenos-llama-server) |
 
@@ -74,7 +74,7 @@ KarenOS se présente comme une application de bureau « clé en main » pour exp
 
 Trois choix structurants :
 
-- **La souveraineté des données.** Aucun prompt, aucune pièce jointe, aucun résultat ne quitte l'ordinateur. La seule connexion réseau est le **téléchargement initial des modèles** depuis Hugging Face et celui du moteur depuis les releases GitHub de llama.cpp.
+- **La souveraineté des données.** Aucun prompt, aucune pièce jointe, aucun résultat ne quitte l'ordinateur. La seule connexion réseau est le **téléchargement initial des modèles** depuis Hugging Face : le moteur est embarqué dans l'application, il n'est plus téléchargé (sauf repli explicite sur macOS 12+).
 - **L'interopérabilité.** Le moteur parlant le protocole HTTP d'OpenAI (`/v1/chat/completions`, streaming **SSE**), KarenOS n'invente aucune API propriétaire : le même moteur peut être consommé par tout client compatible.
 - **La productivité locale.** Au-delà du chat, KarenOS pilote les capacités de la machine : l'utilisateur peut confier des **missions** à des agents qui bouclent, observent, exécutent des commandes shell, lancent des applications et journalisent chaque itération.
 
@@ -110,9 +110,9 @@ Deux surfaces d'exposition professionnelles :
 
 ## 5. Distribution et formats
 
-- **Application macOS** : bundle `KarenOS.app` distribué en zip (`KarenOS-1.0.0-macOS.zip`, ~2,8 Mo) via la Release GitHub [`v1.0.0`](https://github.com/martialzinsou/KarenOs/releases/tag/v1.0.0). Au premier lancement, l'app télécharge le moteur `llama-server` (~8 Mo) selon l'architecture (`x64` ou `arm64`).
+- **Application macOS** : bundle `KarenOS.app` distribué en zip (`KarenOS-1.0.0-macOS.zip`) via la Release GitHub [`v1.0.0`](https://github.com/martialzinsou/KarenOs/releases/tag/v1.0.0). Les builds courants pèsent ~25 Mo et **embarquent le moteur** (`Contents/Resources/Engine/` : `llama-server` + 7 dylib recompilés pour macOS 11) ainsi que le runtime de concurrence Swift (`Contents/Frameworks/libswift_Concurrency.dylib`) : l'app fonctionne dès le premier lancement, sans réseau, y compris sous macOS 11.
 - **Image conteneur (moteur seul, Linux)** : publiée sur le GitHub Container Registry sous `ghcr.io/martialzinsou/karenos/karenos-llama-server`, reconstruite automatiquement à chaque tag `v*` par l'action GitHub `.github/workflows/container.yml`.
-- **Documentation** : wiki GitHub bilingue (25 pages FR/US), `README.md`, `docs/DOCUMENTATION.md` & `-EN`, page encyclopédique (ce document).
+- **Documentation** : wiki GitHub bilingue (28 pages FR/US), `README.md` (+ versions EN/ES/RU), `docs/DOCUMENTATION.md` & `-EN`, `docs/BIG-SUR.md` (portage macOS 11), page encyclopédique (ce document).
 
 ---
 
@@ -132,7 +132,7 @@ flowchart TB
             DL["DownloadManager → resolve/main"]
         end
         subgraph SUPPORT["~/Library/Application Support/KarenOS/"]
-            ENG["Engine/llama-b8967/<br/>llama-server"]
+            ENG["KarenOS.app/Contents/Resources/Engine/<br/>llama-server + 7 dylib (minos 11.0)"]
             MODELS["Models/Auteur__Modele/*.gguf<br/>(+ *.mmproj pour la vision)"]
             REG["models.json · skills.json · agents.json · server.log"]
         end
@@ -164,7 +164,7 @@ Le design garantit que :
 
 - le moteur n'écoute que sur l'**interface loopback** (`--host 127.0.0.1`) sur un **port libre** choisi à la volée (repli 8391) ;
 - l'application n'est jamais un serveur partagé — le processus vit et meurt avec l'app ;
-- les échanges sont du **streaming SSE**, affichés token par token.
+- les échanges sont du **streaming SSE**, affichés token par token (`delta.content`, avec repli sur `delta.reasoning_content` pour les modèles dits « thinking ») ;
 
 ## 7. Cas d'utilisation
 
@@ -430,7 +430,7 @@ sequenceDiagram
     E->>M: tokenisation du prompt + inférence
     loop Génération
         M-->>E: token suivant
-        E-->>S: event SSE "data: {delta.content}"
+        E-->>S: event SSE "data: {delta.content ou delta.reasoning_content}"
     end
     E-->>S: event "[DONE]"
     S->>S: rend chaque fragment (yield)
@@ -474,9 +474,9 @@ sequenceDiagram
     V->>E: load(model)
     E->>E: ensureEngine() — idempotent
     alt Modèle différent de l'actif
-        E->>E: stopProcess() (interrupt puis terminate)
+        E->>E: stopProcess() (SIGTERM, 1,5 s, puis SIGKILL)
         E->>E: choisit un port libre (socket ephemeral)
-        E->>P: lance "llama-server -m model.gguf<br/>--host 127.0.0.1 --port N<br/>-c 2048 -t {cœurs/2}<br/>--flash-attn on -ctk q8_0 -ctv q8_0 --mlock"
+        E->>P: lance "llama-server -m model.gguf<br/>--host 127.0.0.1 --port N<br/>-c 8192 -np 1 -t {cœurs physiques ≤ 8}<br/>--prio 2 --flash-attn on --reasoning off<br/>-ctk q8_0 -ctv q8_0 --mlock --no-mmap"
         loop toutes les 0,8 s (max 150 · 120 s)
             E->>H: GET /health
             H-->>E: 200 ?
@@ -584,7 +584,7 @@ Points notables :
 - **Aucune donnée sortante** : le seul trafic réseau est le téléchargement des modèles (Hugging Face) et du moteur (GitHub Releases). Le moteur n'écoute que sur `127.0.0.1`.
 - **`--mlock`** : le modèle est verrouillé en mémoire physique (pas de swap), un atout pour la stabilité sur postes à mémoire contrainte.
 - **Anti-hallucination** : les modèles textuels reçoivent une consigne système leur interdisant de produire des erreurs du type « ERROR: Cannot read … (this model does not support image input) » ; aucune pièce jointe n'est transmise à un modèle qui ne peut pas la traiter.
-- **Cohabitation application/moteur** : le processus `llama-server` est arrêté proprement (`interrupt` → `terminate`) via `EngineManager.stop()` et à la fermeture de l'app (`willTerminateNotification`).
+- **Cohabitation application/moteur** : le processus `llama-server` est arrêté par `EngineManager.stop()` (SIGTERM, 1,5 s d'attente, puis SIGKILL) et à la fermeture de l'app (`willTerminateNotification`) — sans quoi il lui arrivait de survivre avec plusieurs Go de RAM.
 - La capacité shell d'un agent (`allowsShell`) est **opt-in par agent**, plafonnée à 30 actions et bornée à 30 s par commande.
 
 ## 15. Exigences, réglages et performances
@@ -599,22 +599,29 @@ Points notables :
 
 | Paramètre | Valeur | Effet |
 |---|---|---|
-| `-c` | `2048` | fenêtre de contexte fixe |
-| `-t` | `activeProcessorCount / 2` | threads = cœurs physiques |
+| `-c` | `8192` | fenêtre de contexte fixe |
+| `-np` | `1` | un seul slot, celui de la conversation en cours |
+| `-t` / `-tb` | `hw.physicalcpu` plafonné à 8 | threads = cœurs physiques (HyperThreading pénalisé sur ce CPU) |
+| `--prio` / QoS | `2` / `.userInteractive` | ordonnancement prioritaire pendant la génération |
 | `--flash-attn on` | — | attention flash (mémoire/bande passante) |
 | `-ctk / -ctv` | `q8_0` | cache KV quantifié |
-| `--mlock` | — | modèles verrouillés en RAM |
+| `--mlock` / `--no-mmap` | — | modèle lu entièrement et verrouillé en RAM |
+| `--reasoning off` | — | empêche les modèles « thinking » de vider le budget de tokens avant la réponse |
 | `max_tokens` / `temperature` | `512` / `0.7` | bornes de l'appel chat |
 | `/health` | 0,8 s × 150 | détection de disponibilité (< 120 s) |
 
-**Performances mesurées (Mac Intel, moteur compilé localement b10025, AVX2 + BLAS)**
+**Performances mesurées**
 
-| Modèle | Débit |
-|---|---|
-| SmolLM2 (135 M) | ≈ 24 tokens/s (contre ≈ 17 avec la version de référence) |
-| GLM-4-9B | ≈ 0,73 token/s (`-t 4`) contre ≈ 0,35 (`-t 8`) |
+| Moteur | Modèle | Débit |
+|---|---|---|
+| Release `b8967` officielle, `-t 8`, sans flash-attn | SmolLM2-360M | ≈ 17 tokens/s |
+| Compilation locale `b10025`, `-t 4`, flash-attn, KV q8, mlock | SmolLM2-360M / GLM-4-9B | ≈ 24 tokens/s / ≈ 0,73 token/s |
+| **Moteur embarqué actuel** (`b8967` recompilé portable, `-t 4`) | SmolLM2-360M Q8_0 | **43,8 – 46,3 tokens/s** |
+| idem | Gemma 4 E4B Q4_K_M (≈ 5 Go) | **4,9 – 5,1 tokens/s** |
 
-Le moteur distribué par l'app est la release **`b8967`** ; le binaire est également compilé **localement** (sources llama.cpp, AVX2 + BLAS Apple) dans l'installation de travail.
+Ces mesures proviennent d'une machine unique — MacBookPro11,3, i7-4850HQ (4C/8T, Haswell, AVX2 + FMA), 16 Go DDR3, macOS 13.7 — obtenues avec le harness de smoke test de l'app ; elles décrivent une plage observée, pas une garantie, et un Mac plus récent sera nettement plus rapide.
+
+Le moteur distribué est la release **`b8967`** de llama.cpp, **recompilée pour macOS 11** depuis les sources (`CMAKE_OSX_DEPLOYMENT_TARGET=11.0`, `GGML_METAL=OFF`, `GGML_ACCELERATE=ON`, `GGML_BLAS=Apple`, `GGML_NATIVE=OFF`) puis relocalisée (`@executable_path` / `@loader_path`) et signée ad-hoc. Le build **portable** a été préféré à `-march=native` : plus rapide sur la machine de référence et à l'abri d'un `SIGILL` sur les Mac sans AVX2. Recette complète dans `docs/BIG-SUR.md`.
 
 ## 16. Déploiement conteneur (serveurs DSI)
 
